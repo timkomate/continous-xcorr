@@ -8,15 +8,19 @@ class Dataset(object):
     #string[] matfiles
     def __init__(self,path,components):
         self._dataset = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict)))
-        for component in components:
-            root_dir = "%s/%s" % (path, component)
+        self._path = path
+        self._components = components
+
+    def read_dataset(self):
+        for component in self._components:
+            root_dir = "%s/%s/2017/" % (self._path, component)
             for dir_name, subdir_list, file_list in os.walk(root_dir):
                     for fname in file_list:
                         #print(fname)
                         network = fname.split('.')[0]
                         station = fname.split('.')[1]
                         self.push_to_dataset(component,network,station,dir_name,fname)
-
+    
     def print_dataset(self):
         print self._dataset
 
