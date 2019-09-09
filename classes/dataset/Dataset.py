@@ -43,7 +43,7 @@ class Dataset(object):
         self._dataset = data
 
     def push_to_dataset(self,component,network, station,dir_name,fname):
-        fold = "folders"
+        #fold = "folders"
         if component in self._dataset:
             if network in self._dataset[component]:
                 if station in self._dataset[component][network]:
