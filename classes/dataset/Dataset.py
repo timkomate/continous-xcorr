@@ -14,9 +14,10 @@ class Dataset(object):
     def read_dataset(self):
         for component in self._components:
             root_dir = "%s/%s/2017/" % (self._path, component)
+            print root_dir
             for dir_name, subdir_list, file_list in os.walk(root_dir):
                     for fname in file_list:
-                        #print(fname)
+                        print(fname)
                         network = fname.split('.')[0]
                         station = fname.split('.')[1]
                         self.push_to_dataset(component,network,station,dir_name,fname)
