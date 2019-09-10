@@ -4,6 +4,7 @@ from ..station.Station import Station
 import numpy as np
 from scipy import signal, fftpack
 import matplotlib.pyplot as plt
+from obspy.signal.util import next_pow_2
 from timeit import default_timer as timer
 import math
 
@@ -46,7 +47,7 @@ class Xcorrelator(object):
             #plt.plot(c)
             #plt.show()
             print "c size:", np.size(c)
-            
+            self.spectral_whitening(c)
             
             i += 1
         end = timer()
@@ -91,7 +92,7 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(data1, wlen=None, spectrumexp = 1):
+    def spectral_whitening(self,data1, wlen=None, spectrumexp = 1):
         '''
         apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
     
@@ -104,26 +105,37 @@ class Xcorrelator(object):
         '''
         ndat = len(data1)
         nfft = next_pow_2(2*ndat)
-        s1 = np.fft.rfft(data1, nfft) # real part, length nfft/2+1
-    #   if timer: print("spectral whitening ... FFTs: %.2fs" % float(time.time()-t0))
-    
+        s1 = np.fft.rfft(data1,nfft) # real part, length nfft/2+1
+        
+        print s1, type(s1), s1.shape
+        plt.plot(s1)
+        plt.show()
+
+        s2 = fftpack.fft(data1)
+
+        print s2, type(s2), s2.shape
+        plt.plot(s2)
+        plt.show()
+
+        #plt.plot(s1-s2)
+        #plt.show()
         # winlen is no of samples of smoothing boxcar
         # ... winlen should be max nfft/10
-        winlen = int(nfft/100)
-        if wlen is not None:
-            winlen = min(wlen, winlen)
+        #winlen = int(nfft/100)
+        #if wlen is not None:
+        #    winlen = min(wlen, winlen)
     
         #s1s = np.convolve(abs(s1), np.ones(winlen)/winlen, 'same') # smoothed spectrum
         #s1s = fftconvolve(abs(s1), np.ones(winlen)/winlen, 'same') # smoothed spectrum
         ## fftconv not faster than np.convolve here
-        s1s = fftconv(abs(s1), np.ones(winlen)/winlen, nfft) # smoothed spectrum
+        #s1s = fftconv(abs(s1), np.ones(winlen)/winlen, nfft) # smoothed spectrum
         
         # waterlevel smoothed spectrum
-        s1s[(s1s < 1E-10)] = 1E-10
+        #s1s[(s1s < 1E-10)] = 1E-10
         
-        s1w = s1 / np.power(s1s, spectrumexp) # whitened spectrum
-        x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
-        return x1w
+        #s1w = s1 / np.power(s1s, spectrumexp) # whitened spectrum
+        #x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
+        #return x1w
 
     def fft(self):
         i = 0
