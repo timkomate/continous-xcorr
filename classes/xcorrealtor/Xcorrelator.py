@@ -38,6 +38,8 @@ class Xcorrelator(object):
             print self._instrument2.get_waveform(i).print_waveform()
             print "a size:",np.size(a)
             print "b size:",np.size(b)
+            #plt.plot(a)
+            #plt.show()
             c = signal.correlate(a,b, mode = "full", method="fft")
             tcorr = np.arange(-a.shape[0] + 1, a.shape[0])
             dN = np.where(np.abs(tcorr) <= maxlag*5)[0]
@@ -104,18 +106,27 @@ class Xcorrelator(object):
             np.array, spectrally whitened time series vector
         '''
         ndat = len(data1)
-        nfft = next_pow_2(2*ndat)
-        s1 = np.fft.rfft(data1,nfft) # real part, length nfft/2+1
-        
+        #nfft = next_pow_2(2*ndat)
+        plt.plot(data1)
+        plt.show()
+        s1 =(fftpack.rfft(data1)) # real part, length nfft/2+1
+        f = fftpack.rfftfreq(ndat, d=0.2)
         print s1, type(s1), s1.shape
-        plt.plot(s1)
+        print f, type(f), f.shape
+        plt.plot(f,s1)
+        plt.show()
+        dada = fftpack.irfft(s1)
+        plt.plot(dada)
         plt.show()
 
-        s2 = fftpack.fft(data1)
-
-        print s2, type(s2), s2.shape
-        plt.plot(s2)
+        plt.plot(data1-dada)
         plt.show()
+
+        #s2 = fftpack.fft(data1)
+
+        #print s2, type(s2), s2.shape
+        #plt.plot(s2)
+        #plt.show()
 
         #plt.plot(s1-s2)
         #plt.show()
