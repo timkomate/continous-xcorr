@@ -16,10 +16,8 @@ class Instrument(object):
     
     def push_waveform(self, path):
         waveform = Waveform(path)
-        #if waveform.get
-        if (waveform.get_npts() < 100):
-            print waveform.print_waveform()
-        #waveform.print_waveform()
+        waveform.binary_normalization()
+        #waveform.plot()
         self._waveforms.append(waveform)
     
     #def print_station(self):

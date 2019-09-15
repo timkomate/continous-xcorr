@@ -44,8 +44,8 @@ class Waveform(object):
         self._endtime = endtime
     
     def get_npts(self):
-        return self._data.shape[0]
-        #return self._npts
+        #return self._data.shape[0]
+        return self._npts
 
     def set_npts(self, npts):
         self._npts = npts
@@ -63,7 +63,10 @@ class Waveform(object):
         plt.plot(self._data)
         plt.show()
 
-
+    def binary_normalization(self):
+        A = self._data > 0
+        self._data[A] = 1
+        self._data[-A] = -1
 
     def print_waveform(self,extended = False):
         print "Path:", self._path

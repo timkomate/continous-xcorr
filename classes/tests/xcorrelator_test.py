@@ -12,6 +12,6 @@ intersect =  data.intersect("HHZ","HU","ABAH","HHZ","Z3","A263A")
 xc = Xcorrelator("HHZ","HU","ABAH","HHZ","Z3","A263A", intersect)
 xc.read_waveforms()
 xc.correct_waveform_lengths()
-xc.xcorr(6000)
+xc.xcorr(600)
 
 #xc.fft()

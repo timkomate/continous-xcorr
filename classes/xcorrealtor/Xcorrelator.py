@@ -30,6 +30,10 @@ class Xcorrelator(object):
     def xcorr(self,maxlag):
         i = 0
         start = timer()
+        shape = (self._c, (maxlag*2) + 1)
+
+        self._xcorrelations = np.zeros(shape = shape)
+        print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
             print i
             a = self._instrument1.get_waveform(i).get_data()
@@ -49,8 +53,8 @@ class Xcorrelator(object):
             #plt.plot(c)
             #plt.show()
             print "c size:", np.size(c)
-            self.spectral_whitening(c)
-            
+            c = self.spectral_whitening(c)
+            self._xcorrelations[i,:]
             i += 1
         end = timer()
         print(end - start)
@@ -94,7 +98,7 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(self,data1, wlen=None, spectrumexp = 1):
+    def spectral_whitening(self, data1, spectrumexp = 1, espwhitening = 0.05, wlengthcross = 100):
         '''
         apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
     
@@ -105,23 +109,35 @@ class Xcorrelator(object):
         return:
             np.array, spectrally whitened time series vector
         '''
-        ndat = len(data1)
-        #nfft = next_pow_2(2*ndat)
-        plt.plot(data1)
-        plt.show()
-        s1 =(fftpack.rfft(data1)) # real part, length nfft/2+1
-        f = fftpack.rfftfreq(ndat, d=0.2)
-        print s1, type(s1), s1.shape
-        print f, type(f), f.shape
-        plt.plot(f,s1)
-        plt.show()
-        dada = fftpack.irfft(s1)
-        plt.plot(dada)
-        plt.show()
+        #plt.plot(data1)
+        #plt.show()
+        spectrum =(fftpack.rfft(data1))
+        #f = fftpack.rfftfreq(len(data1), d=0.2)
+        spectrum_abs = np.abs(spectrum)
+        spectrum_abs[(spectrum_abs < (np.mean(spectrum_abs)*espwhitening))] = np.mean(spectrum_abs)*espwhitening   
+        #print spectrum, type(spectrum), spectrum.shape
+        #print f, type(f), f.shape
+        #plt.plot(f,spectrum)
+        #plt.plot(f,spectrum_abs)
+        #plt.show()
+        
+        original = fftpack.irfft(spectrum)
+        #whitening
+        spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
 
-        plt.plot(data1-dada)
-        plt.show()
+        whitened = fftpack.irfft(spectrum)
+        tukey_window = signal.tukey(wlengthcross/0.2)
+        whitened = whitened * signal.tukey(len(whitened))
 
+        nyf = 1/(2*0.2)
+        [b,a] = signal.butter(3,[(1./100)/nyf,1./1/nyf], btype='bandpass')
+
+        #plt.plot(original)
+        #plt.plot(whitened)
+        whitened = signal.filtfilt(b,a,whitened)
+        #plt.plot(whitened)
+        #plt.show()
+        return whitened
         #s2 = fftpack.fft(data1)
 
         #print s2, type(s2), s2.shape
