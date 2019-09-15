@@ -30,7 +30,7 @@ class Xcorrelator(object):
     def xcorr(self,maxlag):
         i = 0
         start = timer()
-        shape = (self._c, (maxlag*2) + 1)
+        shape = (self._c, (maxlag*5*2) + 1)
 
         self._xcorrelations = np.zeros(shape = shape)
         print "xcorrelations:", self._xcorrelations.size, shape
@@ -54,10 +54,14 @@ class Xcorrelator(object):
             #plt.show()
             print "c size:", np.size(c)
             c = self.spectral_whitening(c)
-            self._xcorrelations[i,:]
+            self._xcorrelations[i,:] = c
             i += 1
         end = timer()
         print(end - start)
+        sum = np.sum(self._xcorrelations, axis=0)
+        print sum 
+        plt.plot(sum)
+        plt.show()
 
     def correct_waveform_lengths(self):
         i = 0
