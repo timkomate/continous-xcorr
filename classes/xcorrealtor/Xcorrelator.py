@@ -126,7 +126,7 @@ class Xcorrelator(object):
         spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
 
         whitened = fftpack.irfft(spectrum)
-        tukey_window = signal.tukey(wlengthcross/0.2)
+        tukey_window = signal.tukey(int(wlengthcross/0.2))
         whitened = whitened * signal.tukey(len(whitened))
 
         nyf = 1/(2*0.2)

@@ -66,7 +66,7 @@ class Waveform(object):
     def binary_normalization(self):
         A = self._data > 0
         self._data[A] = 1
-        self._data[-A] = -1
+        self._data[np.invert(A)] = -1
 
     def print_waveform(self,extended = False):
         print "Path:", self._path
