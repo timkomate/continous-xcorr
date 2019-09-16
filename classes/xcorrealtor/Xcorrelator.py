@@ -60,7 +60,15 @@ class Xcorrelator(object):
         print(end - start)
         sum = np.sum(self._xcorrelations, axis=0)
         print sum 
+        plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
+        
+        plt.show()
         plt.plot(sum)
+        plt.show()
+        f, t, Sxx = signal.spectrogram(sum, 5)
+        plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
         plt.show()
 
     def correct_waveform_lengths(self):
