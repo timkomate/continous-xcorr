@@ -12,15 +12,15 @@ class Xcorrelator(object):
     def __init__(self,component1, network1, station1, component2, network2, station2, paths):
         self._inst1 = "%s.%s.%s_*.mat" % (network1, station1, component1)
         self._inst2 = "%s.%s.%s_*.mat" % (network2, station2, component2)
-        self._paths = paths
+        self._paths = np.sort(paths)
         sta = Station("HU", "BUD", 47, 19, 165)
         self._instrument1 = Instrument(sta)
         self._instrument2 = Instrument(sta)
         self._c = 0
 
     def read_waveforms(self):
+        self._c = len(self._paths)
         for path in self._paths:
-            self._c += 1
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
             print file1, file2
@@ -30,46 +30,49 @@ class Xcorrelator(object):
     def xcorr(self,maxlag):
         i = 0
         start = timer()
-        shape = (self._c, (maxlag*5*2) + 1)
-
+        self._sampling_rate = self._instrument1.get_sampling_rate()
+        shape = (self._c, (maxlag*self._sampling_rate*2) + 1)
         self._xcorrelations = np.zeros(shape = shape)
         print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
             print i
             a = self._instrument1.get_waveform(i).get_data()
             b = self._instrument2.get_waveform(i).get_data()
-            print self._instrument1.get_waveform(i).print_waveform()
-            print self._instrument2.get_waveform(i).print_waveform()
-            print "a size:",np.size(a)
-            print "b size:",np.size(b)
+            #print self._instrument1.get_waveform(i).print_waveform()
+            #print self._instrument2.get_waveform(i).print_waveform()
+            #print "a size:",np.size(a)
+            #print "b size:",np.size(b)
             #plt.plot(a)
             #plt.show()
-            c = signal.correlate(a,b, mode = "full", method="fft")
+            ccf = signal.correlate(a,b, mode = "full", method="fft")
             tcorr = np.arange(-a.shape[0] + 1, a.shape[0])
-            dN = np.where(np.abs(tcorr) <= maxlag*5)[0]
-            #print tcorr, tcorr.shape
-            #print dN, dN.shape
-            c = c[dN]
+            dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
+            ccf = ccf[dN]
             #plt.plot(c)
             #plt.show()
-            print "c size:", np.size(c)
-            c = self.spectral_whitening(c)
-            self._xcorrelations[i,:] = c
+            print "c size:", np.size(ccf), ccf.shape, ccf.size
+            print "tcorr size:", np.size(tcorr)
+            ccf = self.spectral_whitening(ccf)
+            self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
         print(end - start)
-        sum = np.sum(self._xcorrelations, axis=0)
-        print sum 
+        self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
+        simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
         plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
         
+        #plt.show()
+        plt.plot(self._stacked_ccf)
+        plt.plot(simmetric_part)
         plt.show()
-        plt.plot(sum)
-        plt.show()
-        f, t, Sxx = signal.spectrogram(sum, 5)
+        f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
         plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [sec]')
         plt.show()
+    
+    def calculate_simmetric_part(self, c):
+        return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
 
     def correct_waveform_lengths(self):
         i = 0
@@ -124,7 +127,7 @@ class Xcorrelator(object):
         #plt.plot(data1)
         #plt.show()
         spectrum =(fftpack.rfft(data1))
-        #f = fftpack.rfftfreq(len(data1), d=0.2)
+        #f = fftpack.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
         spectrum_abs[(spectrum_abs < (np.mean(spectrum_abs)*espwhitening))] = np.mean(spectrum_abs)*espwhitening   
         #print spectrum, type(spectrum), spectrum.shape
@@ -134,14 +137,14 @@ class Xcorrelator(object):
         #plt.show()
         
         original = fftpack.irfft(spectrum)
+
         #whitening
         spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
 
         whitened = fftpack.irfft(spectrum)
-        tukey_window = signal.tukey(int(wlengthcross/0.2))
         whitened = whitened * signal.tukey(len(whitened))
 
-        nyf = 1/(2*0.2)
+        nyf = 1/(2*(1./self._sampling_rate))
         [b,a] = signal.butter(3,[(1./100)/nyf,1./1/nyf], btype='bandpass')
 
         #plt.plot(original)
@@ -193,3 +196,7 @@ class Xcorrelator(object):
             axs[2].plot(fft1-fft2)
             plt.show()
             i += 1
+
+#TODO
+#The stripped waveforms sometimes not equally long. Needs to check
+#

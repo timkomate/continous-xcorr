@@ -17,8 +17,10 @@ class Instrument(object):
     def push_waveform(self, path):
         waveform = Waveform(path)
         waveform.binary_normalization()
-        #waveform.plot()
         self._waveforms.append(waveform)
+
+    def get_sampling_rate(self):
+        return self._waveforms[0].get_sampling_rate()
     
     #def print_station(self):
     #    self._station.info()
