@@ -31,7 +31,8 @@ class Xcorrelator(object):
         i = 0
         start = timer()
         self._sampling_rate = self._instrument1.get_sampling_rate()
-        shape = (self._c, (maxlag*self._sampling_rate*2) + 1)
+        shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
+        print shape
         self._xcorrelations = np.zeros(shape = shape)
         print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
@@ -60,16 +61,15 @@ class Xcorrelator(object):
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
         simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
         plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        
-        #plt.show()
-        plt.plot(self._stacked_ccf)
+        plt.show()
+        #plt.plot(self._stacked_ccf)
         plt.plot(simmetric_part)
         plt.show()
-        f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
-        plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
-        plt.ylabel('Frequency [Hz]')
-        plt.xlabel('Time [sec]')
-        plt.show()
+        #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
+        #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
+        #plt.ylabel('Frequency [Hz]')
+        #plt.xlabel('Time [sec]')
+        #plt.show()
     
     def calculate_simmetric_part(self, c):
         return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
