@@ -10,13 +10,20 @@ class Instrument(object):
     #Station station
     #Waveform z_component
     
-    def __init__(self, Station):
+    def __init__(self, Station, filters = []):
         self._station = Station
         self._waveforms = []
+        self._filters = filters
+
+    def set_filters(self, filters):
+        self._filters = filters
     
     def push_waveform(self, path):
         waveform = Waveform(path)
-        waveform.binary_normalization()
+        if len(self._filters):
+            waveform.running_absolute_mean(filters = self._filters)
+        else:
+            waveform.binary_normalization()
         self._waveforms.append(waveform)
 
     def get_sampling_rate(self):

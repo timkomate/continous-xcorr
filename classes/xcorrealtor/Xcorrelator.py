@@ -18,8 +18,10 @@ class Xcorrelator(object):
         self._instrument2 = Instrument(sta)
         self._c = 0
 
-    def read_waveforms(self):
+    def read_waveforms(self, filters = []):
         self._c = len(self._paths)
+        self._instrument1.set_filters(filters)
+        self._instrument2.set_filters(filters)
         for path in self._paths:
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
@@ -32,7 +34,7 @@ class Xcorrelator(object):
         start = timer()
         self._sampling_rate = self._instrument1.get_sampling_rate()
         shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
-        print shape
+        #print shape
         self._xcorrelations = np.zeros(shape = shape)
         print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
@@ -51,20 +53,20 @@ class Xcorrelator(object):
             ccf = ccf[dN]
             #plt.plot(c)
             #plt.show()
-            print "c size:", np.size(ccf), ccf.shape, ccf.size
-            print "tcorr size:", np.size(tcorr)
+            #print "c size:", np.size(ccf), ccf.shape, ccf.size
+            #print "tcorr size:", np.size(tcorr)
             ccf = self.spectral_whitening(ccf)
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
         print(end - start)
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
-        simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
-        plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        plt.show()
+        self._simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
+        #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
+        #plt.show()
         #plt.plot(self._stacked_ccf)
-        plt.plot(simmetric_part)
-        plt.show()
+        #plt.plot(simmetric_part)
+        #plt.show()
         #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
         #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
         #plt.ylabel('Frequency [Hz]')
@@ -74,13 +76,19 @@ class Xcorrelator(object):
     def calculate_simmetric_part(self, c):
         return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
 
+    def save_figures(self,path):
+        plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
+        plt.savefig("%s/daily_ccfs.png" % path)
+        plt.plot(self._stacked_ccf)
+        plt.savefig("%s/stacked_ccf.png" % path)
+
     def correct_waveform_lengths(self):
         i = 0
         while i < self._c:
             a = self._instrument1.get_waveform(i)
             b = self._instrument2.get_waveform(i)
-            a.print_waveform()
-            b.print_waveform()
+            #a.print_waveform()
+            #b.print_waveform()
             dt = a.get_dt()
             s1 = a.get_starttime()
             s2 = b.get_starttime()
