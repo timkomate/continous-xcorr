@@ -73,7 +73,7 @@ class Waveform(object):
     def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1, min_weight = 0.1):
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
-        boxc = np.ones((nb))/nb
+        boxc = np.ones((int(nb)))/nb
         #boxc =  np.pad(boxc, (0,np.abs(self._data.shape[0] - boxc.shape[0])),mode="constant", constant_values=(0))
         #print boxc, boxc.shape
         nyf = 1/(2*(1./self._sampling_rate))

@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import glob
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
@@ -7,6 +9,7 @@ import matplotlib.pyplot as plt
 from obspy.signal.util import next_pow_2
 from timeit import default_timer as timer
 import math
+
 
 class Xcorrelator(object):
     def __init__(self,component1, network1, station1, component2, network2, station2, paths):
@@ -77,8 +80,8 @@ class Xcorrelator(object):
         return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
 
     def save_figures(self,path):
-        plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        plt.savefig("%s/daily_ccfs.png" % path)
+        #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
+        #plt.savefig("%s/daily_ccfs.png" % path)
         plt.plot(self._stacked_ccf)
         plt.savefig("%s/stacked_ccf.png" % path)
 
