@@ -70,26 +70,43 @@ class Waveform(object):
         self._data[A] = 1
         self._data[np.invert(A)] = -1
 
-    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1, min_weight = 0.1):
+    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1):
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
         boxc = np.ones((int(nb)))/nb
         #boxc =  np.pad(boxc, (0,np.abs(self._data.shape[0] - boxc.shape[0])),mode="constant", constant_values=(0))
-        #print boxc, boxc.shape
+        print boxc, boxc.shape
         nyf = 1/(2*(1./self._sampling_rate))
+        plt.plot(self._data)
+        plt.title("unfiltered data")
+        plt.show()
         for filter in filters:
             print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
-            filtered_data = signal.filtfilt(b,a,self._data)
-            data_env = signal.convolve(abs(filtered_data),boxc)
-            data_env = data_env[boxc.shape[0]/ 2 -1 : -boxc.shape[0]/ 2]
-            #print data_env.shape, self._data.shape
+            filtered_data = signal.filtfilt(b,a,self._data) #*  signal.tukey(self._data.shape[0],alpha = 0.75)
+            plt.plot(filtered_data)
+            plt.title("filtered data")
+            plt.show()
+            data_env = signal.convolve(abs(filtered_data),boxc,method="fft")
+            #data_env = np.convolve(abs(filtered_data),boxc)
+            data_env = data_env[boxc.shape[0]/ 2 -1: -boxc.shape[0]/ 2]
+            plt.plot(data_env)
+            plt.show()
+            print data_env.shape, self._data.shape
             data_exponent = np.power(data_env, env_exp)
             mean_data_exponent = np.mean(data_exponent)
             weight = weight * data_exponent / mean_data_exponent
+            plt.plot(weight)
+            plt.title("weights")
+            plt.show()
+            print weight
         weight[weight < min_weight * mean_data_exponent] = min_weight * mean_data_exponent
-        self._data = (self._data / weight) *  signal.tukey(self._data.shape[0],alpha = 0.75)
+        self._data = (self._data / weight) *  signal.tukey(self._data.shape[0],alpha = 0.1)
+        plt.plot(self._data)
+        plt.title("filtered data")
+        plt.show()
         #whitened = whitened * signal.tukey(len(whitened))
+        exit()
 
     def running_absolute_mean2(self, envsmooth = 1500, env_exp = 1, min_weight = 0.1):
         nb = np.floor(envsmooth/self._delta)
