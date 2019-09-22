@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 import glob
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
