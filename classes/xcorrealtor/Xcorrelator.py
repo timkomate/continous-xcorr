@@ -1,5 +1,5 @@
-import matplotlib
-matplotlib.use('Agg')
+ #import matplotlib
+#matplotlib.use('Agg')
 import glob
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
@@ -66,10 +66,11 @@ class Xcorrelator(object):
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
         self._simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
         #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        #plt.show()
-        #plt.plot(self._stacked_ccf)
+        plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
+        plt.show()
+        plt.plot(self._stacked_ccf)
         #plt.plot(simmetric_part)
-        #plt.show()
+        plt.show()
         #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
         #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
         #plt.ylabel('Frequency [Hz]')
@@ -80,8 +81,9 @@ class Xcorrelator(object):
         return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
 
     def save_figures(self,path):
-        #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        #plt.savefig("%s/daily_ccfs.png" % path)
+        plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
+        plt.savefig("%s/daily_ccfs.png" % path)
+        
         plt.plot(self._stacked_ccf)
         plt.savefig("%s/stacked_ccf.png" % path)
 
@@ -124,7 +126,7 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(self, data1, spectrumexp = 1, espwhitening = 0.05, wlengthcross = 100):
+    def spectral_whitening(self, data1, spectrumexp = 0.9, espwhitening = 0.05, wlengthcross = 100):
         '''
         apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
     
@@ -140,7 +142,8 @@ class Xcorrelator(object):
         spectrum =(fftpack.rfft(data1))
         #f = fftpack.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
-        spectrum_abs[(spectrum_abs < (np.mean(spectrum_abs)*espwhitening))] = np.mean(spectrum_abs)*espwhitening   
+        mean_spectrum_abs = np.mean(spectrum_abs)
+        spectrum_abs[(spectrum_abs < (mean_spectrum_abs*espwhitening))] = mean_spectrum_abs*espwhitening   
         #print spectrum, type(spectrum), spectrum.shape
         #print f, type(f), f.shape
         #plt.plot(f,spectrum)

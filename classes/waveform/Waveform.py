@@ -75,7 +75,7 @@ class Waveform(object):
         weight = np.ones((self._data.shape[0]))
         boxc = np.ones((int(nb)))/nb
         #boxc =  np.pad(boxc, (0,np.abs(self._data.shape[0] - boxc.shape[0])),mode="constant", constant_values=(0))
-        print boxc, boxc.shape
+        #print boxc, boxc.shape
         nyf = 1/(2*(1./self._sampling_rate))
         #plt.plot(self._data)
         #plt.title("unfiltered data")
@@ -92,19 +92,24 @@ class Waveform(object):
             data_env = data_env[boxc.shape[0]/ 2 -1: -boxc.shape[0]/ 2]
             #plt.plot(data_env)
             #plt.show()
-            print data_env.shape, self._data.shape
+            #print data_env.shape, self._data.shape
             data_exponent = np.power(data_env, env_exp)
-            mean_data_exponent = np.mean(data_exponent)
-            weight = weight * data_exponent / mean_data_exponent
-           # plt.plot(weight)
-          #  plt.title("weights")
-         #   plt.show()
-            print weight
-        weight[weight < min_weight * mean_data_exponent] = min_weight * mean_data_exponent
+            weight = weight * data_exponent / np.mean(data_exponent)
+            #plt.plot(weight)
+            #plt.title("weights")
+            #plt.show()
+            #print weight
+        #weight = weight * data_exponent / mean_data_exponent
+        water_level = np.mean(weight) * min_weight
+        weight[weight < water_level] = water_level
+        #plt.plot(weight)
+        #plt.title("final weights")
+        #plt.show()
         self._data = (self._data / weight) *  signal.tukey(self._data.shape[0],alpha = 0.1)
         #plt.plot(self._data)
         #plt.title("filtered data")
         #plt.show()
+        #exit()
         #whitened = whitened * signal.tukey(len(whitened))
 
     def running_absolute_mean2(self, envsmooth = 1500, env_exp = 1, min_weight = 0.1):
