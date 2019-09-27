@@ -4,7 +4,7 @@ import glob
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
 import numpy as np
-from scipy import signal, fftpack
+from scipy import signal, fftpack, io
 import matplotlib.pyplot as plt
 from obspy.signal.util import next_pow_2
 from timeit import default_timer as timer
@@ -16,9 +16,10 @@ class Xcorrelator(object):
         self._inst1 = "%s.%s.%s_*.mat" % (network1, station1, component1)
         self._inst2 = "%s.%s.%s_*.mat" % (network2, station2, component2)
         self._paths = np.sort(paths)
-        sta = Station("HU", "BUD", 47, 19, 165)
-        self._instrument1 = Instrument(sta)
-        self._instrument2 = Instrument(sta)
+        sta1 = Station(network1, station1, 47, 19, 165)
+        sta2 = Station(network1, station1, 47, 19, 165)
+        self._instrument1 = Instrument(sta1)
+        self._instrument2 = Instrument(sta2)
         self._c = 0
 
     def read_waveforms(self, filters = []):
@@ -44,32 +45,26 @@ class Xcorrelator(object):
             print i
             a = self._instrument1.get_waveform(i).get_data()
             b = self._instrument2.get_waveform(i).get_data()
-            #print self._instrument1.get_waveform(i).print_waveform()
-            #print self._instrument2.get_waveform(i).print_waveform()
-            #print "a size:",np.size(a)
-            #print "b size:",np.size(b)
-            #plt.plot(a)
-            #plt.show()
             ccf = signal.correlate(a,b, mode = "full", method="fft")
             tcorr = np.arange(-a.shape[0] + 1, a.shape[0])
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
+            self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            #plt.plot(c)
-            #plt.show()
-            #print "c size:", np.size(ccf), ccf.shape, ccf.size
-            #print "tcorr size:", np.size(tcorr)
             ccf = self.spectral_whitening(ccf)
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
         print(end - start)
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
-        self._simmetric_part = self.calculate_simmetric_part(self._stacked_ccf)
+        self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
+        print self._simmetric_part
+        print self._simmetric_lagtime
         #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
         plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
         plt.show()
-        plt.plot(self._stacked_ccf)
-        #plt.plot(simmetric_part)
+        plt.plot(self._lagtime,self._stacked_ccf)
+        plt.show()
+        plt.plot(self._simmetric_lagtime,self._simmetric_part)
         plt.show()
         #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
         #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
@@ -77,8 +72,9 @@ class Xcorrelator(object):
         #plt.xlabel('Time [sec]')
         #plt.show()
     
-    def calculate_simmetric_part(self, c):
-        return np.flipud(c)[0:c.size/2] + c[c.size/2 + 1:]
+    def calculate_simmetric_part(self):
+        size = self._stacked_ccf.size
+        return self._stacked_ccf[size/2 + 1:] + np.flipud(self._stacked_ccf[0:size/2]), self._lagtime[size/2 + 1:]
 
     def save_figures(self,path):
         plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
@@ -92,8 +88,6 @@ class Xcorrelator(object):
         while i < self._c:
             a = self._instrument1.get_waveform(i)
             b = self._instrument2.get_waveform(i)
-            #a.print_waveform()
-            #b.print_waveform()
             dt = a.get_dt()
             s1 = a.get_starttime()
             s2 = b.get_starttime()
@@ -193,6 +187,12 @@ class Xcorrelator(object):
         #x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
         #return x1w
 
+    def save_ccf(self):
+        matfile = {
+            "a" : 1
+        }
+        
+
     def fft(self):
         i = 0
         while i < self._c:
@@ -213,4 +213,4 @@ class Xcorrelator(object):
 
 #TODO
 #The stripped waveforms sometimes not equally long. Needs to check
-#
+#set the lon, lat and elevation for the instruments
