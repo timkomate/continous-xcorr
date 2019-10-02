@@ -1,2 +1,4 @@
 test_dataset
 figures
+*.mat
+*.m

@@ -9,18 +9,24 @@ import matplotlib.pyplot as plt
 from obspy.signal.util import next_pow_2
 from timeit import default_timer as timer
 import math
+import json
 
 
 class Xcorrelator(object):
-    def __init__(self,component1, network1, station1, component2, network2, station2, paths):
+    def __init__(self,component1, network1, station1, component2, network2, station2, paths, json_path):
         self._inst1 = "%s.%s.%s_*.mat" % (network1, station1, component1)
         self._inst2 = "%s.%s.%s_*.mat" % (network2, station2, component2)
         self._paths = np.sort(paths)
-        sta1 = Station(network1, station1, 47, 19, 165)
-        sta2 = Station(network1, station1, 47, 19, 165)
+        station_data_dict = Xcorrelator.load_station_infos(json_path)
+        [lat1, lon1, elev1] = Xcorrelator.find_station_coordinates(station_data_dict, network1, station1)
+        [lat2, lon2, elev2] = Xcorrelator.find_station_coordinates(station_data_dict, network2, station2)
+        sta1 = Station(network1, station1, lat1, lon1, elev1)
+        sta2 = Station(network1, station1, lat2, lon2, elev2)
+        self._distance = Xcorrelator.calc_distance_km(sta1.get_coordinates(), sta2.get_coordinates())
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
         self._c = 0
+        print self._distance
 
     def read_waveforms(self, filters = []):
         self._c = len(self._paths)
@@ -187,10 +193,20 @@ class Xcorrelator(object):
         #x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
         #return x1w
 
-    def save_ccf(self):
+    def save_ccf(self, path):
         matfile = {
-            "a" : 1
+            "compflag" : "ZZ",
+            "corrflag" : "CCF",
+            "cross12" : self._stacked_ccf,
+            "cutvec" : self._xcorrelations,
+            "Dist" : self._distance,
+            "dtnew" : self._sampling_rate,
+            "lagsx1x2" : self._lagtime,
+            "nstack" : self._c,
+            "Station1" : self._instrument1.get_station_code(),
+            "Station2" : self._instrument2.get_station_code()
         }
+        io.savemat(path, matfile)
         
 
     def fft(self):
@@ -210,6 +226,56 @@ class Xcorrelator(object):
             axs[2].plot(fft1-fft2)
             plt.show()
             i += 1
+
+    @staticmethod
+    def calc_distance_deg(s_coordinates, e_coordinates):
+        slat = s_coordinates[0]
+        slon = s_coordinates[1]
+        elat = e_coordinates[0]
+        elon = e_coordinates[1]
+        FLATTENING = 0.00335281066474
+        f = (1. - FLATTENING) * (1. - FLATTENING)
+        geoc_elat = math.atan(f * math.tan((math.pi/180) * elat))
+        celat = math.cos(geoc_elat)
+        selat = math.sin(geoc_elat)
+        geoc_slat = math.atan(f * math.tan((math.pi/180) * slat))
+        rdlon = (math.pi/180) * (elon - slon)
+        cslat = math.cos(geoc_slat)
+        sslat = math.sin(geoc_slat)
+        cdlon = math.cos(rdlon)
+        sdlon = math.sin(rdlon)
+        cdel = sslat * selat + cslat * celat * cdlon
+        cdel if cdel<1 else 1
+        cdel if cdel>-1 else -1
+        delta = (180/math.pi) * math.acos(cdel)
+        return delta
+    
+    @staticmethod
+    def calc_distance_km(s_coordinates, e_coordinates):
+        slat = math.radians(s_coordinates[0])
+        slon = math.radians(s_coordinates[1])
+        elat = math.radians(e_coordinates[0])
+        elon = math.radians(e_coordinates[1])
+        R = 6371.0
+        dlon = slon - elon
+        dlat = slat - elat
+        a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+    
+    @staticmethod
+    def load_station_infos(json_path):
+        with open(json_path, 'r') as fp:
+            data = json.load(fp)
+        return data
+    
+    @staticmethod
+    def find_station_coordinates(data, network, station):
+        elev = data[network][station]["elevation"]
+        lat = data[network][station]["latitude"]
+        lon = data[network][station]["longitude"]
+        return [lat, lon, elev]
+
 
 #TODO
 #The stripped waveforms sometimes not equally long. Needs to check
