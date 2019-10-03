@@ -21,7 +21,7 @@ class Xcorrelator(object):
         [lat1, lon1, elev1] = Xcorrelator.find_station_coordinates(station_data_dict, network1, station1)
         [lat2, lon2, elev2] = Xcorrelator.find_station_coordinates(station_data_dict, network2, station2)
         sta1 = Station(network1, station1, lat1, lon1, elev1)
-        sta2 = Station(network1, station1, lat2, lon2, elev2)
+        sta2 = Station(network2, station2, lat2, lon2, elev2)
         self._distance = Xcorrelator.calc_distance_km(sta1.get_coordinates(), sta2.get_coordinates())
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
@@ -66,12 +66,12 @@ class Xcorrelator(object):
         print self._simmetric_part
         print self._simmetric_lagtime
         #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
-        plt.show()
-        plt.plot(self._lagtime,self._stacked_ccf)
-        plt.show()
-        plt.plot(self._simmetric_lagtime,self._simmetric_part)
-        plt.show()
+        #plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
+        #plt.show()
+        #plt.plot(self._lagtime,self._stacked_ccf)
+        #plt.show()
+        #plt.plot(self._simmetric_lagtime,self._simmetric_part)
+        #plt.show()
         #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
         #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
         #plt.ylabel('Frequency [Hz]')
@@ -156,7 +156,7 @@ class Xcorrelator(object):
         spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
 
         whitened = fftpack.irfft(spectrum)
-        whitened = whitened * signal.tukey(len(whitened))
+        whitened = whitened * signal.tukey(len(whitened), alpha = 0.15)
 
         nyf = 1/(2*(1./self._sampling_rate))
         [b,a] = signal.butter(3,[(1./100)/nyf,1./1/nyf], btype='bandpass')
@@ -199,8 +199,8 @@ class Xcorrelator(object):
             "corrflag" : "CCF",
             "cross12" : self._stacked_ccf,
             "cutvec" : self._xcorrelations,
-            "Dist" : self._distance,
-            "dtnew" : self._sampling_rate,
+            "Dist" : self._distance * 1000,
+            "dtnew" : 1./self._sampling_rate,
             "lagsx1x2" : self._lagtime,
             "nstack" : self._c,
             "Station1" : self._instrument1.get_station_code(),
