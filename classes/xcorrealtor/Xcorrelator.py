@@ -44,7 +44,7 @@ class Xcorrelator(object):
         end = timer()
         print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
-    def xcorr(self,maxlag):
+    def xcorr(self,maxlag = 600, spectrumexp = 1):
         print "Cross-correlation..."
         i = 0
         start = timer()
@@ -62,7 +62,7 @@ class Xcorrelator(object):
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = self.spectral_whitening(ccf)
+            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp)
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
@@ -202,13 +202,13 @@ class Xcorrelator(object):
         #x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
         #return x1w
 
-    def save_ccf(self, path):
+    def save_ccf(self, path, tested_parameter = ""):
         compflag = "ZZ"
         corrflag = "CCF"
         nstack = self._c
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
-        save_path = "%s/%s_%s_%s_%s_%s_%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method)
+        save_path = "%s/%s_%s_%s_%s_%s_%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
         matfile = {
             "compflag" : compflag,
             "corrflag" : corrflag,

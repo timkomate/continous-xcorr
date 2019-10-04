@@ -1,5 +1,6 @@
 from ..xcorrealtor.Xcorrelator import Xcorrelator
 from ..dataset.Dataset import Dataset
+import numpy as np
 
 from timeit import default_timer as timer
 
@@ -22,9 +23,10 @@ intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","BUD")
 xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","BUD", intersect, "./stations.json")
 xc.read_waveforms(filters= filters)
 xc.correct_waveform_lengths()
-xc.xcorr(600)
-#xc.save_figures("./figures/")
-end = timer()
-print "Script finished:", end - start
-xc.save_ccf("./ccfs")
+for i in np.arange(0.1,2.5,0.1):
+    xc.xcorr(600,spectrumexp=i)
+    #xc.save_figures("./figures/")
+    end = timer()
+    print "Script finished:", end - start
+    xc.save_ccf("./ccfs", tested_parameter = "spec_exp%s" % (i))
 #xc.fft()
