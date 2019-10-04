@@ -26,29 +26,35 @@ class Xcorrelator(object):
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
         self._c = 0
-        print self._distance
+        #print self._distance
 
     def read_waveforms(self, filters = []):
+        print "Reading dataset..."
+        self._normalization_method = "RAMN" if len(filters) > 0 else "BN"
+        start = timer()
         self._c = len(self._paths)
         self._instrument1.set_filters(filters)
         self._instrument2.set_filters(filters)
         for path in self._paths:
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
-            print file1, file2
+            #print file1, file2
             self._instrument1.push_waveform(file1)
             self._instrument2.push_waveform(file2)
+        end = timer()
+        print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
     def xcorr(self,maxlag):
+        print "Cross-correlation..."
         i = 0
         start = timer()
         self._sampling_rate = self._instrument1.get_sampling_rate()
         shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
         #print shape
         self._xcorrelations = np.zeros(shape = shape)
-        print "xcorrelations:", self._xcorrelations.size, shape
+        #print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
-            print i
+            #print i
             a = self._instrument1.get_waveform(i).get_data()
             b = self._instrument2.get_waveform(i).get_data()
             ccf = signal.correlate(a,b, mode = "full", method="fft")
@@ -60,11 +66,11 @@ class Xcorrelator(object):
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
-        print(end - start)
+        print "Cross-correlation:", end - start, "seconds\n"
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
-        print self._simmetric_part
-        print self._simmetric_lagtime
+        #print self._simmetric_part
+        #print self._simmetric_lagtime
         #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
         #plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
         #plt.show()
@@ -139,26 +145,29 @@ class Xcorrelator(object):
         '''
         #plt.plot(data1)
         #plt.show()
-        spectrum =(fftpack.rfft(data1))
+        spectrum =(fftpack.rfft(signal.detrend(data1,type="linear")))
         #f = fftpack.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
-        mean_spectrum_abs = np.mean(spectrum_abs)
-        spectrum_abs[(spectrum_abs < (mean_spectrum_abs*espwhitening))] = mean_spectrum_abs*espwhitening   
+        water_level = np.mean(spectrum_abs)*espwhitening
+        spectrum_abs[(spectrum_abs < water_level)] = water_level
         #print spectrum, type(spectrum), spectrum.shape
         #print f, type(f), f.shape
         #plt.plot(f,spectrum)
         #plt.plot(f,spectrum_abs)
         #plt.show()
         
-        original = fftpack.irfft(spectrum)
+        #original = fftpack.irfft(spectrum)
 
         #whitening
         spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
 
         whitened = fftpack.irfft(spectrum)
+        whitened = signal.detrend(whitened,type="linear")
+        whitened[0] = 0
         whitened = whitened * signal.tukey(len(whitened), alpha = 0.15)
 
-        nyf = 1/(2*(1./self._sampling_rate))
+        nyf = (1./2)*self._sampling_rate
+        #print nyf
         [b,a] = signal.butter(3,[(1./100)/nyf,1./1/nyf], btype='bandpass')
 
         #plt.plot(original)
@@ -194,19 +203,26 @@ class Xcorrelator(object):
         #return x1w
 
     def save_ccf(self, path):
+        compflag = "ZZ"
+        corrflag = "CCF"
+        nstack = self._c
+        station1 = self._instrument1.get_station_code()
+        station2 = self._instrument2.get_station_code()
+        save_path = "%s/%s_%s_%s_%s_%s_%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method)
         matfile = {
-            "compflag" : "ZZ",
-            "corrflag" : "CCF",
+            "compflag" : compflag,
+            "corrflag" : corrflag,
             "cross12" : self._stacked_ccf,
             "cutvec" : self._xcorrelations,
             "Dist" : self._distance * 1000,
             "dtnew" : 1./self._sampling_rate,
             "lagsx1x2" : self._lagtime,
-            "nstack" : self._c,
-            "Station1" : self._instrument1.get_station_code(),
-            "Station2" : self._instrument2.get_station_code()
+            "nstack" : nstack,
+            "Station1" :station1,
+            "Station2" : station2
         }
-        io.savemat(path, matfile)
+        io.savemat(save_path, matfile)
+        print "File has been saved as %s" % (save_path) 
         
 
     def fft(self):

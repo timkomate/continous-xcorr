@@ -71,19 +71,22 @@ class Waveform(object):
         self._data[np.invert(A)] = -1
 
     def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1):
+        self._data = signal.detrend(self._data, type="linear" )
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
         boxc = np.ones((int(nb)))/nb
-        #boxc =  np.pad(boxc, (0,np.abs(self._data.shape[0] - boxc.shape[0])),mode="constant", constant_values=(0))
         #print boxc, boxc.shape
-        nyf = 1/(2*(1./self._sampling_rate))
+        nyf = (1./2)*self._sampling_rate
+        print nyf
         #plt.plot(self._data)
         #plt.title("unfiltered data")
         #plt.show()
+        [b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
+        self._data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.15)
         for filter in filters:
-            print filter
+            #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
-            filtered_data = signal.filtfilt(b,a,self._data) #*  signal.tukey(self._data.shape[0],alpha = 0.75)
+            filtered_data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.15)
             #plt.plot(filtered_data)
             #plt.title("filtered data")
             #plt.show()
@@ -111,26 +114,6 @@ class Waveform(object):
         #plt.show()
         #exit()
         #whitened = whitened * signal.tukey(len(whitened))
-
-    def running_absolute_mean2(self, envsmooth = 1500, env_exp = 1, min_weight = 0.1):
-        nb = np.floor(envsmooth/self._delta)
-        weight = np.ones((self._data.shape[0]))
-        boxc = np.ones((nb))/nb
-        M = boxc.shape[0] + self._data.shape[0] - 1
-        #boxc =  np.pad(boxc, (0,np.abs(self._data.shape[0] - boxc.shape[0])),mode="constant", constant_values=(0))
-        #print boxc, boxc.shape
-        #data_env = signal.convolve(abs(self._data),boxc)
-        print np.fft.fft(boxc, M)
-        data_env = np.fft.ifft(np.fft.fft(self._data, M)*np.fft.fft(boxc, M))
-        #data_env = fftpack.ifft(fftpack.fft(self._data, M)*fftpack.fft(boxc, M))
-        print data_env
-        data_env = data_env[boxc.shape[0]/ 2 -1 : -boxc.shape[0]/ 2]
-        #print data_env.shape, self._data.shape
-        data_exponent = np.power(data_env, env_exp)
-        mean_data_exponent = np.mean(data_exponent)
-        weight = weight * data_exponent / mean_data_exponent
-        weight[weight < min_weight * mean_data_exponent] = min_weight * mean_data_exponent
-        self._data = self._data / weight
 
     def print_waveform(self,extended = False):
         print "Path:", self._path

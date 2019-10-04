@@ -3,3 +3,4 @@ figures
 *.mat
 *.m
 *.pyc
+*json
