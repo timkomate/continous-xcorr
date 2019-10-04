@@ -132,7 +132,7 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(self, data1, spectrumexp = 0.9, espwhitening = 0.05, wlengthcross = 100):
+    def spectral_whitening(self, data1, spectrumexp = 0.7, espwhitening = 0.05):
         '''
         apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
     
@@ -160,7 +160,7 @@ class Xcorrelator(object):
 
         #whitening
         spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
-
+        spectrum = spectrum * signal.tukey(len(spectrum), alpha = 0.15)
         whitened = fftpack.irfft(spectrum)
         whitened = signal.detrend(whitened,type="linear")
         whitened[0] = 0
