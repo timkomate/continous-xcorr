@@ -208,7 +208,7 @@ class Xcorrelator(object):
         nstack = self._c
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
-        save_path = "%s/%s_%s_%s_%s_%s_%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
+        save_path = "%s/%s_%s_%s_%s_%s_%s_%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
         matfile = {
             "compflag" : compflag,
             "corrflag" : corrflag,
