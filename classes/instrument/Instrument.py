@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import sys
-sys.path.insert(0, './classes/station/')
-from Station import Station
-sys.path.insert(0, './classes/waveform/')
-from Waveform import Waveform
+#sys.path.insert(0, './classes/station/')
+from ..station.Station import Station
+#sys.path.insert(0, './classes/waveform/')
+from ..waveform.Waveform import Waveform
 
 
 class Instrument(object):

@@ -1,5 +1,6 @@
 import scipy.io
 from obspy.core.utcdatetime import UTCDateTime
+from ..xcorr_utils.xcorr_utils import downweight_ends
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal, fftpack
@@ -70,7 +71,7 @@ class Waveform(object):
         self._data[A] = 1
         self._data[np.invert(A)] = -1
 
-    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1):
+    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000):
         self._data = signal.detrend(self._data, type="linear" )
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
@@ -81,12 +82,12 @@ class Waveform(object):
         #plt.plot(self._data)
         #plt.title("unfiltered data")
         #plt.show()
-        [b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
-        self._data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.15)
+        #[b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
+        #self._data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.05)
         for filter in filters:
             #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
-            filtered_data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.15)
+            filtered_data = downweight_ends(signal.filtfilt(b,a,self._data), wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.01)
             #plt.plot(filtered_data)
             #plt.title("filtered data")
             #plt.show()
@@ -105,15 +106,17 @@ class Waveform(object):
         #weight = weight * data_exponent / mean_data_exponent
         water_level = np.mean(weight) * min_weight
         weight[weight < water_level] = water_level
+        nb = 2*int(taper_length*self._sampling_rate)
+        weight[:nb] = np.mean(weight)
+        weight[-nb:] = np.mean(weight)
         #plt.plot(weight)
         #plt.title("final weights")
         #plt.show()
-        self._data = (self._data / weight) *  signal.tukey(self._data.shape[0],alpha = 0.1)
+        self._data = downweight_ends((self._data / weight),wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.1)
         #plt.plot(self._data)
         #plt.title("filtered data")
         #plt.show()
         #exit()
-        #whitened = whitened * signal.tukey(len(whitened))
 
     def print_waveform(self,extended = False):
         print "Path:", self._path
