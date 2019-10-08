@@ -15,8 +15,8 @@ data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
 #data = Dataset("/media/timko/Maxtor/",["HHZ"])
 #data = Dataset("/maxwelldata/pannonian/PannonianBasin/data",["HHZ"])
 
-data.read_dataset()
-data.save_json("./dataset.json")
+#data.read_dataset()
+#data.save_json("./dataset.json")
 data.load_json("./dataset.json")
 intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","ABAH")
 
@@ -24,7 +24,7 @@ xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","ABAH", intersect, "./stations.js
 xc.read_waveforms(filters= filters)
 xc.correct_waveform_lengths()
 #for i in np.arange(0.1,2.5,0.1):
-xc.xcorr(600)
+xc.xcorr(600, spectrumexp= 0.7)
 #xc.save_figures("./figures/")
 end = timer()
 print "Script finished:", end - start

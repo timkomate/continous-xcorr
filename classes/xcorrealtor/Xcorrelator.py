@@ -45,7 +45,7 @@ class Xcorrelator(object):
         end = timer()
         print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
-    def xcorr(self,maxlag = 600, spectrumexp = 1):
+    def xcorr(self,maxlag = 600, spectrumexp = 0.7):
         print "Cross-correlation..."
         i = 0
         start = timer()
@@ -144,42 +144,61 @@ class Xcorrelator(object):
         return:
             np.array, spectrally whitened time series vector
         '''
-        #plt.plot(data1)
-        #plt.title("original dataset")
-        #plt.show()
+        plt.plot(data1)
+        plt.title("original dataset")
+        plt.show()
         spectrum =(fftpack.rfft(signal.detrend(data1,type="linear")))
         f = fftpack.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
+        plt.plot(f,spectrum)
+        plt.plot(f,spectrum_abs)
+        plt.title("specrtum and ampl. spectrum")
+        plt.show()
         water_level = np.mean(spectrum_abs)*espwhitening
         spectrum_abs[(spectrum_abs < water_level)] = water_level
         #print spectrum, type(spectrum), spectrum.shape
         #print f, type(f), f.shape
-        #plt.plot(f,spectrum)
-        #plt.plot(f,spectrum_abs)
-        #plt.title("specrtum and ampl. spectrum")
-        #plt.show()
+        #
         
-        original = fftpack.irfft(spectrum)
+        
+        plt.plot(f,spectrum_abs)
+        plt.title("spectrum after water level")
+        plt.show()
+
+        #original = fftpack.irfft(spectrum)
 
         #whitening
-        spectrum = spectrum / (np.power(spectrum_abs,espwhitening))
-        spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate)) #* signal.tukey(len(spectrum), alpha = 0.1)
+        fig, axs = plt.subplots(2)
+        fig.suptitle('Vertically stacked subplots')
+        axs[0].plot(spectrum)
+        axs[1].plot(np.power(spectrum_abs,spectrumexp))
+        plt.show()
+
+        spectrum = np.divide(spectrum, (np.power(spectrum_abs,spectrumexp)))
+        spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate))
+        spectrum[0] = 0
+
+        plt.plot(f,np.abs(spectrum))
+        plt.title("spectrum after whitening")
+        plt.show()
         whitened = fftpack.irfft(spectrum)
         whitened = signal.detrend(whitened,type="linear")
-        whitened[0] = 0
-        whitened =  downweight_ends(whitened,wlength= (taper_length * self._sampling_rate)) #signal.tukey(len(whitened), alpha = 0.1)
+        whitened =  downweight_ends(whitened,wlength= (taper_length * self._sampling_rate))
 
         nyf = (1./2)*self._sampling_rate
         [b,a] = signal.butter(3,[(1./100)/nyf,(1./1)/nyf], btype='bandpass')
 
-        #plt.plot(original)
-        #plt.plot(whitened)
-        #plt.title("original and whitened before filtering")
-        #plt.show()
+        plt.plot(data1)
+        plt.plot(whitened)
+        plt.title("original and whitened before filtering")
+        plt.show()
+
         whitened = signal.filtfilt(b,a,whitened)
-        #plt.plot(whitened)
-        #plt.title("whitened signal after filtering")
-        #plt.show()
+        plt.plot(whitened)
+        plt.title("whitened signal after filtering")
+        plt.show()
+        #remove mean
+        whitened = whitened * np.mean(np.abs(whitened))
         return whitened
         #s2 = fftpack.fft(data1)
 
