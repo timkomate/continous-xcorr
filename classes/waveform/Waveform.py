@@ -82,8 +82,8 @@ class Waveform(object):
         #plt.plot(self._data)
         #plt.title("unfiltered data")
         #plt.show()
-        #[b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
-        #self._data = signal.filtfilt(b,a,self._data) *  signal.tukey(self._data.shape[0],alpha = 0.05)
+        [b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
+        self._data = signal.filtfilt(b,a,self._data) #*  signal.tukey(self._data.shape[0],alpha = 0.05)
         for filter in filters:
             #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')

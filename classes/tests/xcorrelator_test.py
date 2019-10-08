@@ -9,8 +9,8 @@ start = timer()
 filters = [[100,10],[10,5],[5,1]]
 #filters = []
 #data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
-data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
-#data = Dataset("/gaussdata/Seismologie/PannonianBasin/data/2017",["HHZ"])
+#data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
+data = Dataset("/gaussdata/Seismologie/PannonianBasin/data/2017",["HHZ"])
 #data = Dataset("/gaussdata/Seismologie/PannonianBasin/data",["HHZ"])
 #data = Dataset("/media/timko/Maxtor/",["HHZ"])
 #data = Dataset("/maxwelldata/pannonian/PannonianBasin/data",["HHZ"])
@@ -18,9 +18,9 @@ data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
 #data.read_dataset()
 #data.save_json("./dataset.json")
 data.load_json("./dataset.json")
-intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","ABAH")
+intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","BUD")
 
-xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","ABAH", intersect, "./stations.json")
+xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","BUD", intersect, "./stations.json")
 xc.read_waveforms(filters= filters)
 xc.correct_waveform_lengths()
 #for i in np.arange(0.1,2.5,0.1):
