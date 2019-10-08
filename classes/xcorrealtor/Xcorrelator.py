@@ -63,7 +63,7 @@ class Xcorrelator(object):
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp)
+            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp, plot= False)
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
@@ -133,7 +133,7 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(self, data1, spectrumexp = 0.7, espwhitening = 0.05, taper_length = 100):
+    def spectral_whitening(self, data1, spectrumexp = 0.7, espwhitening = 0.05, taper_length = 100, plot = False):
         '''
         apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
     
@@ -144,61 +144,73 @@ class Xcorrelator(object):
         return:
             np.array, spectrally whitened time series vector
         '''
-        #plt.plot(data1)
-        #plt.title("original dataset")
-        #plt.show()
-        spectrum =(fftpack.rfft(signal.detrend(data1,type="linear")))
-        f = fftpack.rfftfreq(len(data1), d=1./self._sampling_rate)
+        if (plot):
+            plt.plot(data1)
+            plt.title("original dataset")
+            plt.show()
+        #spectrum =(fftpack.rfft(signal.detrend(data1,type="linear")))
+        spectrum =(np.fft.rfft(signal.detrend(data1,type="linear")))
+        #spectrum =(np.fft.fft(signal.detrend(data1,type="linear")))
+        f = np.fft.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
-        #plt.plot(f,spectrum)
-        #plt.plot(f,spectrum_abs)
-        #plt.title("specrtum and ampl. spectrum")
-        #plt.show()
+        if (plot):
+            plt.plot(f,spectrum)
+            plt.plot(f,spectrum_abs)
+            plt.title("specrtum and ampl. spectrum")
+            plt.show()
         water_level = np.mean(spectrum_abs)*espwhitening
         spectrum_abs[(spectrum_abs < water_level)] = water_level
         #print spectrum, type(spectrum), spectrum.shape
         #print f, type(f), f.shape
         #
         
-        
-        #plt.plot(f,spectrum_abs)
-        #plt.title("spectrum after water level")
-        #plt.show()
+        if (plot):
+            plt.plot(f,spectrum_abs)
+            plt.title("spectrum after water level")
+            plt.show()
 
         #original = fftpack.irfft(spectrum)
 
         #whitening
-       # fig, axs = plt.subplots(2)
-        #fig.suptitle('Vertically stacked subplots')
-        #axs[0].plot(spectrum)
-        #axs[1].plot(np.power(spectrum_abs,spectrumexp))
-        #plt.show()
+        if (plot):
+            fig, axs = plt.subplots(3)
+            fig.suptitle('Vertically stacked subplots')
+            axs[0].plot(spectrum)
+            axs[1].plot(np.power(spectrum_abs,spectrumexp))
+            axs[2].plot(spectrum_abs)
+            plt.show()
 
         spectrum = np.divide(spectrum, (np.power(spectrum_abs,spectrumexp)))
-        spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate))
+        #spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate))
         spectrum[0] = 0
 
-        #plt.plot(f,np.abs(spectrum))
-        #plt.title("spectrum after whitening")
-        #plt.show()
-        whitened = fftpack.irfft(spectrum)
+        if (plot):
+            plt.plot(f,np.abs(spectrum))
+            plt.title("spectrum after whitening")
+            plt.show()
+        #whitened = fftpack.irfft(spectrum)
+        whitened = np.fft.irfft((spectrum))
+        #whitened = np.fft.ifft(np.real(spectrum))
         whitened = signal.detrend(whitened,type="linear")
         whitened =  downweight_ends(whitened,wlength= (taper_length * self._sampling_rate))
 
         nyf = (1./2)*self._sampling_rate
         [b,a] = signal.butter(3,[(1./100)/nyf,(1./1)/nyf], btype='bandpass')
 
-        #plt.plot(data1)
-        #plt.plot(whitened)
-        #plt.title("original and whitened before filtering")
-        #plt.show()
+        if (plot):
+            plt.plot(data1)
+            plt.plot(whitened)
+            plt.title("original and whitened before filtering")
+            plt.show()
 
         whitened = signal.filtfilt(b,a,whitened)
-        #plt.plot(whitened)
-        #plt.title("whitened signal after filtering")
-        #plt.show()
+        if (plot):
+            plt.plot(whitened)
+            plt.title("whitened signal after filtering")
+            plt.show()
         #remove mean
         whitened = whitened * np.mean(np.abs(whitened))
+        whitened = np.append(whitened, 0)
         return whitened
         #s2 = fftpack.fft(data1)
 

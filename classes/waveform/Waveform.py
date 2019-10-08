@@ -71,52 +71,55 @@ class Waveform(object):
         self._data[A] = 1
         self._data[np.invert(A)] = -1
 
-    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000):
-        self._data = signal.detrend(self._data, type="linear" )
+    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False):
+        self._data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
         boxc = np.ones((int(nb)))/nb
         #print boxc, boxc.shape
         nyf = (1./2)*self._sampling_rate
         print nyf
-        #plt.plot(self._data)
-        #plt.title("unfiltered data")
-        #plt.show()
+        if (plot):
+            plt.plot(self._data)
+            plt.title("unfiltered data")
+            plt.show()
         [b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
         self._data = signal.filtfilt(b,a,self._data) #*  signal.tukey(self._data.shape[0],alpha = 0.05)
         for filter in filters:
             #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
             filtered_data = downweight_ends(signal.filtfilt(b,a,self._data), wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.01)
-            #plt.plot(filtered_data)
-            #plt.title("filtered data")
-            #plt.show()
+            if (plot):
+                plt.plot(filtered_data)
+                plt.title("filtered data")
+                plt.show()
             data_env = signal.convolve(abs(filtered_data),boxc,method="fft")
-            #data_env = np.convolve(abs(filtered_data),boxc)
             data_env = data_env[boxc.shape[0]/ 2 -1: -boxc.shape[0]/ 2]
-            #plt.plot(data_env)
-            #plt.show()
+            if (plot):
+                plt.plot(data_env)
+                plt.title("envelope")
+                plt.show()
             #print data_env.shape, self._data.shape
             data_exponent = np.power(data_env, env_exp)
             weight = weight * data_exponent / np.mean(data_exponent)
-            #plt.plot(weight)
-            #plt.title("weights")
-            #plt.show()
-            #print weight
-        #weight = weight * data_exponent / mean_data_exponent
+            if (plot):
+                plt.plot(weight)
+                plt.title("weights")
+                plt.show()
         water_level = np.mean(weight) * min_weight
         weight[weight < water_level] = water_level
         nb = 2*int(taper_length*self._sampling_rate)
         weight[:nb] = np.mean(weight)
         weight[-nb:] = np.mean(weight)
-        #plt.plot(weight)
-        #plt.title("final weights")
-        #plt.show()
+        if (plot):
+            plt.plot(weight)
+            plt.title("final weights")
+            plt.show()
         self._data = downweight_ends((self._data / weight),wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.1)
-        #plt.plot(self._data)
-        #plt.title("filtered data")
-        #plt.show()
-        #exit()
+        if (plot):
+            plt.plot(self._data)
+            plt.title("filtered data")
+            plt.show()
 
     def print_waveform(self,extended = False):
         print "Path:", self._path

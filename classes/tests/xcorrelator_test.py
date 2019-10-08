@@ -18,9 +18,9 @@ data = Dataset("/gaussdata/Seismologie/PannonianBasin/data/2017",["HHZ"])
 #data.read_dataset()
 #data.save_json("./dataset.json")
 data.load_json("./dataset.json")
-intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","BUD")
+intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","ABAH")
 
-xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","BUD", intersect, "./stations.json")
+xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","ABAH", intersect, "./stations.json")
 xc.read_waveforms(filters= filters)
 xc.correct_waveform_lengths()
 #for i in np.arange(0.1,2.5,0.1):
