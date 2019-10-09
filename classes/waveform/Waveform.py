@@ -78,7 +78,7 @@ class Waveform(object):
         boxc = np.ones((int(nb)))/nb
         #print boxc, boxc.shape
         nyf = (1./2)*self._sampling_rate
-        print nyf
+        #print nyf
         if (plot):
             plt.plot(self._data)
             plt.title("unfiltered data")
