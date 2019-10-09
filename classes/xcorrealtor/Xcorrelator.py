@@ -27,11 +27,12 @@ class Xcorrelator(object):
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
         self._c = 0
-        #print self._distance
 
     def read_waveforms(self, filters = []):
         print "Reading dataset..."
         self._normalization_method = "RAMN" if len(filters) > 0 else "BN"
+        self._instrument1.clear()
+        self._instrument2.clear()
         start = timer()
         self._c = len(self._paths)
         self._instrument1.set_filters(filters)
@@ -39,23 +40,19 @@ class Xcorrelator(object):
         for path in self._paths:
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
-            #print file1, file2
             self._instrument1.push_waveform(file1)
             self._instrument2.push_waveform(file2)
         end = timer()
         print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
-    def xcorr(self,maxlag = 600, spectrumexp = 0.7):
+    def xcorr(self,maxlag = 600, spectrumexp = 0.7, verbose = False):
         print "Cross-correlation..."
         i = 0
         start = timer()
         self._sampling_rate = self._instrument1.get_sampling_rate()
         shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
-        #print shape
         self._xcorrelations = np.zeros(shape = shape)
-        #print "xcorrelations:", self._xcorrelations.size, shape
         while i < self._c:
-            #print i
             a = self._instrument1.get_waveform(i).get_data()
             b = self._instrument2.get_waveform(i).get_data()
             ccf = signal.correlate(a,b, mode = "full", method="fft")
@@ -63,27 +60,13 @@ class Xcorrelator(object):
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp, plot= False)
+            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp, plot = verbose)
             self._xcorrelations[i,:] = ccf
             i += 1
         end = timer()
         print "Cross-correlation:", end - start, "seconds\n"
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
-        #print self._simmetric_part
-        #print self._simmetric_lagtime
-        #plt.imshow(self._xcorrelations, aspect = "auto",  cmap = "bone")
-        #plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
-        #plt.show()
-        #plt.plot(self._lagtime,self._stacked_ccf)
-        #plt.show()
-        #plt.plot(self._simmetric_lagtime,self._simmetric_part)
-        #plt.show()
-        #f, t, Sxx = signal.spectrogram(simmetric_part, self._sampling_rate)
-        #plt.pcolormesh(t, f, Sxx, cmap = "rainbow")
-        #plt.ylabel('Frequency [Hz]')
-        #plt.xlabel('Time [sec]')
-        #plt.show()
     
     def calculate_simmetric_part(self):
         size = self._stacked_ccf.size
@@ -139,7 +122,6 @@ class Xcorrelator(object):
     
         data1: np.array, time series vector
         wlen: int or None (default), length of boxcar for smoothing of spectrum, number of (spectral) samples
-            if None, 1% of nfft will be used
     
         return:
             np.array, spectrally whitened time series vector
@@ -148,38 +130,29 @@ class Xcorrelator(object):
             plt.plot(data1)
             plt.title("original dataset")
             plt.show()
-        #spectrum =(fftpack.rfft(signal.detrend(data1,type="linear")))
         spectrum =(np.fft.rfft(signal.detrend(data1,type="linear")))
-        #spectrum =(np.fft.fft(signal.detrend(data1,type="linear")))
-        f = np.fft.rfftfreq(len(data1), d=1./self._sampling_rate)
         spectrum_abs = np.abs(spectrum)
         if (plot):
+            f = np.fft.rfftfreq(len(data1), d=1./self._sampling_rate)
             plt.plot(f,spectrum)
             plt.plot(f,spectrum_abs)
             plt.title("specrtum and ampl. spectrum")
             plt.show()
-        water_level = np.mean(spectrum_abs)*espwhitening
+        water_level = np.mean(spectrum_abs) * espwhitening
         spectrum_abs[(spectrum_abs < water_level)] = water_level
-        #print spectrum, type(spectrum), spectrum.shape
-        #print f, type(f), f.shape
-        #
         
         if (plot):
             plt.plot(f,spectrum_abs)
             plt.title("spectrum after water level")
             plt.show()
-
-        #original = fftpack.irfft(spectrum)
-
-        #whitening
-        if (plot):
             fig, axs = plt.subplots(3)
             fig.suptitle('Vertically stacked subplots')
             axs[0].plot(spectrum)
             axs[1].plot(np.power(spectrum_abs,spectrumexp))
             axs[2].plot(spectrum_abs)
             plt.show()
-
+        
+        #whitening
         spectrum = np.divide(spectrum, (np.power(spectrum_abs,spectrumexp)))
         #spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate))
         spectrum[0] = 0
@@ -188,21 +161,13 @@ class Xcorrelator(object):
             plt.plot(f,np.abs(spectrum))
             plt.title("spectrum after whitening")
             plt.show()
-        #whitened = fftpack.irfft(spectrum)
+
         whitened = np.fft.irfft((spectrum))
-        #whitened = np.fft.ifft(np.real(spectrum))
         whitened = signal.detrend(whitened,type="linear")
         whitened =  downweight_ends(whitened,wlength= (taper_length * self._sampling_rate))
 
         nyf = (1./2)*self._sampling_rate
         [b,a] = signal.butter(3,[(1./100)/nyf,(1./1)/nyf], btype='bandpass')
-
-        if (plot):
-            plt.plot(data1)
-            plt.plot(whitened)
-            plt.title("original and whitened before filtering")
-            plt.show()
-
         whitened = signal.filtfilt(b,a,whitened)
         if (plot):
             plt.plot(whitened)
@@ -212,31 +177,6 @@ class Xcorrelator(object):
         whitened = whitened * np.mean(np.abs(whitened))
         whitened = np.append(whitened, 0)
         return whitened
-        #s2 = fftpack.fft(data1)
-
-        #print s2, type(s2), s2.shape
-        #plt.plot(s2)
-        #plt.show()
-
-        #plt.plot(s1-s2)
-        #plt.show()
-        # winlen is no of samples of smoothing boxcar
-        # ... winlen should be max nfft/10
-        #winlen = int(nfft/100)
-        #if wlen is not None:
-        #    winlen = min(wlen, winlen)
-    
-        #s1s = np.convolve(abs(s1), np.ones(winlen)/winlen, 'same') # smoothed spectrum
-        #s1s = fftconvolve(abs(s1), np.ones(winlen)/winlen, 'same') # smoothed spectrum
-        ## fftconv not faster than np.convolve here
-        #s1s = fftconv(abs(s1), np.ones(winlen)/winlen, nfft) # smoothed spectrum
-        
-        # waterlevel smoothed spectrum
-        #s1s[(s1s < 1E-10)] = 1E-10
-        
-        #s1w = s1 / np.power(s1s, spectrumexp) # whitened spectrum
-        #x1w = np.fft.irfft(s1w, nfft)[:ndat] # IFFT -> data after spectral whitening
-        #return x1w
 
     def save_ccf(self, path, tested_parameter = ""):
         compflag = "ZZ"
@@ -271,7 +211,6 @@ class Xcorrelator(object):
             fft2 = np.fft.fft(a)
             end = timer()
             print (end - start)
-            #plt.plot(fft)
             fig, axs = plt.subplots(3)
             axs[0].plot(fft1)
             axs[1].plot(fft2)
@@ -331,4 +270,3 @@ class Xcorrelator(object):
 
 #TODO
 #The stripped waveforms sometimes not equally long. Needs to check
-#set the lon, lat and elevation for the instruments

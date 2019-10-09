@@ -28,12 +28,12 @@ class Instrument(object):
 
     def get_sampling_rate(self):
         return self._waveforms[0].get_sampling_rate()
+
+    def clear(self):
+        self._waveforms = []
     
     def get_station_coordinates(self):
         return self._station.get_station_coordinates()
-
-    #def print_station(self):
-    #    self._station.info()
 
     def get_station_code(self):
         return self._station.get_station_code()

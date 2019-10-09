@@ -26,7 +26,6 @@ class Waveform(object):
         self._npts = tmp_matfile['npts'][0]
         self._sampling_rate = float(tmp_matfile['sampling_rate'][0])
         self._component = tmp_matfile['channel'][0][-1]
-        #self._filters = filters
 
     def get_data(self):
         return self._data
@@ -68,8 +67,9 @@ class Waveform(object):
 
     def binary_normalization(self):
         A = self._data > 0
-        self._data[A] = 1
-        self._data[np.invert(A)] = -1
+        #self._data[A] = 1
+        #self._data[np.invert(A)] = -1
+        self.data = A.astype(int).flatten()
 
     def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False):
         self._data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
