@@ -178,25 +178,38 @@ class Xcorrelator(object):
         whitened = np.append(whitened, 0)
         return whitened
 
-    def save_ccf(self, path, tested_parameter = ""):
+    def save_ccf(self, path, tested_parameter = "", save_daily_ccf = True):
         compflag = "ZZ"
         corrflag = "CCF"
         nstack = self._c
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
         save_path = "%s/%s_%s_%s_%s_%s_%s%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
-        matfile = {
-            "compflag" : compflag,
-            "corrflag" : corrflag,
-            "cross12" : self._stacked_ccf,
-            "cutvec" : self._xcorrelations,
-            "Dist" : self._distance * 1000,
-            "dtnew" : 1./self._sampling_rate,
-            "lagsx1x2" : self._lagtime,
-            "nstack" : nstack,
-            "Station1" :station1,
-            "Station2" : station2
-        }
+        if (save_daily_ccf):
+            matfile = {
+                "compflag" : compflag,
+                "corrflag" : corrflag,
+                "cross12" : self._stacked_ccf,
+                "cutvec" : self._xcorrelations,
+                "Dist" : self._distance * 1000,
+                "dtnew" : 1./self._sampling_rate,
+                "lagsx1x2" : self._lagtime,
+                "nstack" : nstack,
+                "Station1" :station1,
+                "Station2" : station2
+            }
+        else:
+            matfile = {
+                "compflag" : compflag,
+                "corrflag" : corrflag,
+                "cross12" : self._stacked_ccf,
+                "Dist" : self._distance * 1000,
+                "dtnew" : 1./self._sampling_rate,
+                "lagsx1x2" : self._lagtime,
+                "nstack" : nstack,
+                "Station1" :station1,
+                "Station2" : station2
+            }
         io.savemat(save_path, matfile)
         print "File has been saved as %s" % (save_path) 
         

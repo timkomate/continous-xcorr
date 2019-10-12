@@ -29,7 +29,7 @@ def main():
 #xc.save_figures("./figures/")
     end = timer()
     print "Script finished:", end - start
-    xc.save_ccf("./ccfs")
+    xc.save_ccf("./ccfs", save_daily_ccf= False)
 #xc.fft()
 
   
