@@ -11,13 +11,13 @@ def main():
     filters = [[100,10],[10,5],[5,1]]
     filters = []
     #data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
-    data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
+    data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"], [2017, 2018])
     #data = Dataset("/gaussdata/Seismologie/PannonianBasin/data",["HHZ"])
     #data = Dataset("/media/timko/Maxtor/",["HHZ"])
     #data = Dataset("/maxwelldata/pannonian/PannonianBasin/data",["HHZ"])
 
-    #data.read_dataset()
-    #data.save_json("./dataset.json")
+    data.read_dataset()
+    data.save_json("./dataset.json")
     data.load_json("./dataset.json")
     intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","ABAH")
 

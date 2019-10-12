@@ -6,21 +6,23 @@ class Dataset(object):
 #private:
     #collection data
     #string[] matfiles
-    def __init__(self,path,components):
+    def __init__(self,path, components, years):
         self._dataset = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict)))
         self._path = path
         self._components = components
+        self._years = years
 
     def read_dataset(self):
         for component in self._components:
-            root_dir = "%s/%s/2017/" % (self._path, component)
-            print root_dir
-            for dir_name, subdir_list, file_list in os.walk(root_dir):
-                    for fname in file_list:
-                        print(fname)
-                        network = fname.split('.')[0]
-                        station = fname.split('.')[1]
-                        self.push_to_dataset(component,network,station,dir_name,fname)
+            for year in self._years:
+                root_dir = "%s/%s/%s/" % (self._path, component, year)
+                print root_dir
+                for dir_name, subdir_list, file_list in os.walk(root_dir):
+                        for fname in file_list:
+                            print(fname)
+                            network = fname.split('.')[0]
+                            station = fname.split('.')[1]
+                            self.push_to_dataset(component,network,station,dir_name,fname)
     
     def print_dataset(self):
         print self._dataset
@@ -43,7 +45,7 @@ class Dataset(object):
             data = json.load(fp)
         self._dataset = data
 
-    def push_to_dataset(self,component,network, station,dir_name,fname):
+    def push_to_dataset(self, component, network, station, dir_name, fname):
         #fold = "folders"
         if component in self._dataset:
             if network in self._dataset[component]:
@@ -57,10 +59,8 @@ class Dataset(object):
 
     def intersect(self,component1, network1, station1,component2, network2, station2):
         lst1 = self.get_folders(component1, network1, station1)
-        lst2 = self.get_folders(component2,network2,station2)
+        lst2 = self.get_folders(component2, network2, station2)
         # Use of hybrid method 
         temp = set(lst2) 
         lst3 = [value for value in lst1 if value in temp] 
         return lst3 
-  
-        
