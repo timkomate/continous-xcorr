@@ -4,3 +4,4 @@ figures
 *.m
 *.pyc
 *json
+*.texta*

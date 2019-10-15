@@ -21,14 +21,14 @@ class Xcorrelator_driver(object):
         f = open(input_name, 'r')
         self._file = f.read().splitlines()
         self._c = len(self._file)
-        print file, self._c
+        #print file, self._c
         filters = [[100,10],[10,5],[5,1]]
         for line in self._file:
-            print line
+            #print line
             network1, station1, component1 = line.split(' ')[0].split(".")
             network2, station2, component2 = line.split(' ')[1].split(".")
             intersect =  self._dataset.intersect(component1, network1, station1, component2, network2, station2)
-            print intersect
+            #print intersect
 
             xc = Xcorrelator(component1, network1, station1, component2, network2, station2, intersect, "./stations.json")
             xc.read_waveforms(filters= filters)
