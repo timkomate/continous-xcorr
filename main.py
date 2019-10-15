@@ -1,12 +1,14 @@
 #!/usr/bin/python
 from classes.station.Station import Station
 from classes.instrument.Instrument import Instrument
-from classes.xcorrealtor.Xcorrelator import Xcorrelator
+from classes.xcorrelator.Xcorrelator import Xcorrelator
 from classes.dataset.Dataset import Dataset
 import numpy as np
 from timeit import default_timer as timer
+from classes.Xcorrelator_driver.Xcorrelator_driver import Xcorrelator_driver
+import multiprocessing
 
-def main():
+def main1():
     start = timer()
     filters = [[100,10],[10,5],[5,1]]
     filters = []
@@ -34,4 +36,8 @@ def main():
 
   
 if __name__== "__main__":
-    main()
+    data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"], [2017, 2018])
+    data.load_json("./dataset.json")
+
+    xc_d = Xcorrelator_driver(data,["./xaa", "./xab",  "./xac"])
+    xc_d.run()
