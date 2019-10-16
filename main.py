@@ -39,5 +39,5 @@ if __name__== "__main__":
     data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"], [2017, 2018])
     data.load_json("./dataset.json")
 
-    xc_d = Xcorrelator_driver(data,["./xcorr_stations.textaa", "./xcorr_stations.textab",  "./xcorr_stations.textac"])
+    xc_d = Xcorrelator_driver(data,["./xcorr_stations.text_aa", "./xcorr_stations.text_ab",  "./xcorr_stations.text_ac"])
     xc_d.run()
