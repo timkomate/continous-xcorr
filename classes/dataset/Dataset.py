@@ -6,7 +6,7 @@ class Dataset(object):
 #private:
     #collection data
     #string[] matfiles
-    def __init__(self,path, components, years):
+    def __init__(self, path, components, years):
         self._dataset = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(dict)))
         self._path = path
         self._components = components

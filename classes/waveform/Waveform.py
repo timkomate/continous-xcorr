@@ -71,20 +71,27 @@ class Waveform(object):
         #self._data[np.invert(A)] = -1
         self.data = A.astype(int).flatten()
 
-    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False):
+    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, 
+                        min_weight = 0.1, taper_length = 1000, plot = False,
+                        broadband_filter = [100,1]):
         self._data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((self._data.shape[0]))
         boxc = np.ones((int(nb)))/nb
-        #print boxc, boxc.shape
         nyf = (1./2)*self._sampling_rate
-        #print nyf
         if (plot):
             plt.plot(self._data)
             plt.title("unfiltered data")
             plt.show()
-        [b,a] = signal.butter(3,[1./100/nyf, 1./1/nyf], btype='bandpass')
-        self._data = signal.filtfilt(b,a,self._data) #*  signal.tukey(self._data.shape[0],alpha = 0.05)
+        [b,a] = signal.butter(
+            N = 3,
+            Wn = [1./broadband_filter[0]/nyf, 1./broadband_filter[1]/nyf], 
+            btype='bandpass'
+        )
+        self._data = signal.filtfilt(
+            b = b,
+            a = a,
+            x = self._data)
         for filter in filters:
             #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')

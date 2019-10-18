@@ -1,13 +1,11 @@
- #import matplotlib
-#matplotlib.use('Agg')
 import glob
 from ..xcorr_utils.xcorr_utils import downweight_ends
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
+from ..xcorr_utils.setup_logger import logger
 import numpy as np
 from scipy import signal, fftpack, io
 import matplotlib.pyplot as plt
-#from obspy.signal.util import next_pow_2
 from timeit import default_timer as timer
 import math
 import json
@@ -28,27 +26,43 @@ class Xcorrelator(object):
         self._instrument2 = Instrument(sta2)
         self._c = 0
 
-    def read_waveforms(self, filters = []):
-        print "Reading dataset..."
+    def read_waveforms(self, filters = [], envsmooth = 1500, env_exp = 1.5, 
+                min_weight = 0.1, taper_length = 1000, plot = False):
+        #print "Reading dataset..."
         self._normalization_method = "RAMN" if len(filters) > 0 else "BN"
         self._instrument1.clear()
         self._instrument2.clear()
-        start = timer()
+        #start = timer()
         self._c = len(self._paths)
         self._instrument1.set_filters(filters)
         self._instrument2.set_filters(filters)
         for path in self._paths:
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
-            self._instrument1.push_waveform(file1)
-            self._instrument2.push_waveform(file2)
-        end = timer()
-        print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
+            self._instrument1.push_waveform(
+                path = file1,
+                envsmooth = envsmooth,
+                env_exp = env_exp,
+                min_weight = min_weight,
+                taper_length = taper_length,
+                plot = plot
+            )
+            self._instrument2.push_waveform(
+                path = file2,
+                envsmooth = envsmooth,
+                env_exp = env_exp,
+                min_weight = min_weight,
+                taper_length = taper_length,
+                plot = plot
+            )
+        #end = timer()
+        #print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
-    def xcorr(self,maxlag = 600, spectrumexp = 0.7, verbose = False):
-        print "Cross-correlation..."
+    def xcorr(self, maxlag = 600, spectrumexp = 0.7, 
+            espwhitening = 0.05, taper_length = 100, verbose = False):
+        #print "Cross-correlation..."
         i = 0
-        start = timer()
+        #start = timer()
         self._sampling_rate = self._instrument1.get_sampling_rate()
         shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
         self._xcorrelations = np.zeros(shape = shape)
@@ -60,11 +74,17 @@ class Xcorrelator(object):
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = self.spectral_whitening(ccf, spectrumexp = spectrumexp, plot = verbose)
+            ccf = self.spectral_whitening(
+                ccf = ccf, 
+                spectrumexp = spectrumexp, 
+                espwhitening = 0.05,
+                taper_length = 100,
+                plot = verbose,
+            )
             self._xcorrelations[i,:] = ccf
             i += 1
-        end = timer()
-        print "Cross-correlation:", end - start, "seconds\n"
+        #end = timer()
+        #print "Cross-correlation:", end - start, "seconds\n"
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
     
@@ -116,9 +136,9 @@ class Xcorrelator(object):
             b.recalculate_ntps()
             i += 1
 
-    def spectral_whitening(self, data1, spectrumexp = 0.7, espwhitening = 0.05, taper_length = 100, plot = False):
+    def spectral_whitening(self, ccf, spectrumexp = 0.7, espwhitening = 0.05, taper_length = 100, plot = False):
         '''
-        apply spectral whitening to np.array data1, divide spectrum of data1 by its smoothed version
+        apply spectral whitening to np.array ccf, divide spectrum of data1 by its smoothed version
     
         data1: np.array, time series vector
         wlen: int or None (default), length of boxcar for smoothing of spectrum, number of (spectral) samples
@@ -127,13 +147,13 @@ class Xcorrelator(object):
             np.array, spectrally whitened time series vector
         '''
         if (plot):
-            plt.plot(data1)
+            plt.plot(ccf)
             plt.title("original dataset")
             plt.show()
-        spectrum =(np.fft.rfft(signal.detrend(data1,type="linear")))
+        spectrum =(np.fft.rfft(signal.detrend(ccf,type="linear")))
         spectrum_abs = np.abs(spectrum)
         if (plot):
-            f = np.fft.rfftfreq(len(data1), d=1./self._sampling_rate)
+            f = np.fft.rfftfreq(len(ccf), d=1./self._sampling_rate)
             plt.plot(f,spectrum)
             plt.plot(f,spectrum_abs)
             plt.title("specrtum and ampl. spectrum")
@@ -178,14 +198,14 @@ class Xcorrelator(object):
         whitened = np.append(whitened, 0)
         return whitened
 
-    def save_ccf(self, path, tested_parameter = "", save_daily_ccf = True):
+    def save_ccf(self, path, tested_parameter = "", extended_save = True):
         compflag = "ZZ"
         corrflag = "CCF"
         nstack = self._c
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
         save_path = "%s/%s_%s_%s_%s_%s_%s%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
-        if (save_daily_ccf):
+        if (extended_save):
             matfile = {
                 "compflag" : compflag,
                 "corrflag" : corrflag,
@@ -211,7 +231,8 @@ class Xcorrelator(object):
                 "Station2" : station2
             }
         io.savemat(save_path, matfile)
-        print "File has been saved as %s" % (save_path) 
+        #print "File has been saved as %s" % (save_path)
+        return save_path
         
 
     def fft(self):
