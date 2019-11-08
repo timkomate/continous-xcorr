@@ -3,6 +3,7 @@ from ..xcorr_utils.xcorr_utils import downweight_ends
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
 from ..xcorr_utils.setup_logger import logger
+from ..xcorr_utils import parameter_init
 import numpy as np
 from scipy import signal, fftpack, io
 import matplotlib.pyplot as plt
@@ -13,8 +14,8 @@ import json
 
 class Xcorrelator(object):
     def __init__(self,component1, network1, station1, component2, network2, station2, paths, json_path):
-        self._inst1 = "%s.%s.%s_*.mat" % (network1, station1, component1)
-        self._inst2 = "%s.%s.%s_*.mat" % (network2, station2, component2)
+        self._inst1 = "%s.%s.%s*.mat" % (network1, station1, component1)
+        self._inst2 = "%s.%s.%s*.mat" % (network2, station2, component2)
         self._paths = np.sort(paths)
         station_data_dict = Xcorrelator.load_station_infos(json_path)
         [lat1, lon1, elev1] = Xcorrelator.find_station_coordinates(station_data_dict, network1, station1)
@@ -28,17 +29,21 @@ class Xcorrelator(object):
 
     def read_waveforms(self, filters = [], envsmooth = 1500, env_exp = 1.5, 
                 min_weight = 0.1, taper_length = 1000, plot = False):
-        #print "Reading dataset..."
-        self._normalization_method = "RAMN" if len(filters) > 0 else "BN"
+        if (parameter_init.binary_normalization):
+            self._normalization_method = "BN"
+        elif (parameter_init.running_absolute_mean_normalization):
+            self._normalization_method = "RAMN"
+        else:
+            self._normalization_method = "WN"
         self._instrument1.clear()
         self._instrument2.clear()
-        #start = timer()
         self._c = len(self._paths)
         self._instrument1.set_filters(filters)
         self._instrument2.set_filters(filters)
         for path in self._paths:
             file1 = glob.glob(path + "/" + self._inst1)[0]
             file2 = glob.glob(path + "/" + self._inst2)[0]
+            print file1, file2
             self._instrument1.push_waveform(
                 path = file1,
                 envsmooth = envsmooth,
@@ -55,8 +60,6 @@ class Xcorrelator(object):
                 taper_length = taper_length,
                 plot = plot
             )
-        #end = timer()
-        #print "Reading dataset and time-domain normalization:", end - start, "seconds\n"
 
     def xcorr(self, maxlag = 600, spectrumexp = 0.7, 
             espwhitening = 0.05, taper_length = 100, verbose = False):

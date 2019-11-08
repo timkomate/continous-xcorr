@@ -1,6 +1,7 @@
 import scipy.io
 from obspy.core.utcdatetime import UTCDateTime
 from ..xcorr_utils.xcorr_utils import downweight_ends
+#from ..xcorr_utils import parameter_init
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal, fftpack
@@ -95,7 +96,7 @@ class Waveform(object):
         for filter in filters:
             #print filter
             [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
-            filtered_data = downweight_ends(signal.filtfilt(b,a,self._data), wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.01)
+            filtered_data = downweight_ends(signal.filtfilt(b,a,self._data), wlength = taper_length * self._sampling_rate)
             if (plot):
                 plt.plot(filtered_data)
                 plt.title("filtered data")
@@ -122,7 +123,7 @@ class Waveform(object):
             plt.plot(weight)
             plt.title("final weights")
             plt.show()
-        self._data = downweight_ends((self._data / weight),wlength = taper_length * self._sampling_rate) #*  signal.tukey(self._data.shape[0],alpha = 0.1)
+        self._data = downweight_ends((self._data / weight),wlength = taper_length * self._sampling_rate) 
         if (plot):
             plt.plot(self._data)
             plt.title("filtered data")

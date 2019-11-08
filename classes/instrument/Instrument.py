@@ -2,6 +2,7 @@
 import sys
 from ..station.Station import Station
 from ..waveform.Waveform import Waveform
+from ..xcorr_utils import parameter_init
 
 
 class Instrument(object):
@@ -19,7 +20,8 @@ class Instrument(object):
     def push_waveform(self, path, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, 
                 taper_length = 1000, plot = False):
         waveform = Waveform(path)
-        if len(self._filters):
+        if (parameter_init.running_absolute_mean_normalization):
+            print "ramn"
             waveform.running_absolute_mean(
                 filters = self._filters,
                 envsmooth = envsmooth,
@@ -28,7 +30,8 @@ class Instrument(object):
                 taper_length = taper_length, 
                 plot = False
             )
-        else:
+        elif (parameter_init.binary_normalization):
+            print "bn"
             waveform.binary_normalization()
         self._waveforms.append(waveform)
 
