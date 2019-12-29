@@ -56,3 +56,89 @@ def downweight_ends(data, wlength):
     w = np.flipud(w)
     data[-int(wlength):] = data[-int(wlength):]*w
     return data
+
+def spectral_whitening( data, sampling_rate, spectrumexp = 0.7, 
+                        espwhitening = 0.05, taper_length = 100, 
+                        apply_broadband_filter = True, broadband_filter = [200,1], 
+                        filter_order = 4, plot = False):
+    if (plot):
+        plt.plot(data)
+        plt.title("original dataset")
+        plt.show()
+        
+    data = signal.detrend(
+        data = data,
+        type="linear"
+    )
+    spectrum = np.fft.rfft(
+        a = data,
+        #n= nextpow2(len(data))
+    )
+    spectrum_abs = np.abs(spectrum)
+    if (plot):
+        f = np.fft.rfftfreq(len(data), d=1./sampling_rate)
+        plt.plot(f,spectrum)
+        plt.plot(f,spectrum_abs)
+        plt.title("specrtum and ampl. spectrum")
+        plt.show()
+        
+    water_level = np.mean(spectrum_abs) * espwhitening
+    spectrum_abs[(spectrum_abs < water_level)] = water_level
+        
+    if (plot):
+        plt.plot(f,spectrum_abs)
+        plt.title("spectrum after water level")
+        plt.show()
+        fig, axs = plt.subplots(3)
+        fig.suptitle('Vertically stacked subplots')
+        axs[0].plot(spectrum)
+        axs[1].plot(np.power(spectrum_abs,spectrumexp))
+        axs[2].plot(spectrum_abs)
+        plt.show()
+        
+    #whitening
+    spectrum = np.divide(spectrum, np.power(spectrum_abs,spectrumexp))
+    #spectrum = downweight_ends(spectrum, wlength = (taper_length * sampling_rate))
+    spectrum[0] = 0
+
+    if (plot):
+        plt.plot(f,np.abs(spectrum))
+        plt.title("spectrum after whitening")
+        plt.show()
+
+    whitened = np.fft.irfft(
+        a = spectrum,
+        #n = len(data)
+    )
+        
+    whitened = signal.detrend(
+        data = whitened,
+        type="linear"
+    )
+        
+    whitened =  downweight_ends(
+        data = whitened,
+        wlength= taper_length * sampling_rate
+    )
+    
+    if (apply_broadband_filter):
+        nyf = (1./2) * sampling_rate
+        [b,a] = signal.butter(
+            N = filter_order,
+            Wn = [(1./broadband_filter[0])/nyf,(1./broadband_filter[1])/nyf], 
+            btype='bandpass'
+        )
+        whitened = signal.filtfilt(
+            b = b,
+            a = a,
+            x = whitened
+        )
+
+    if (plot):
+        plt.plot(whitened)
+        plt.title("whitened signal after filtering")
+        plt.show()
+    #remove mean
+    whitened = whitened * np.mean(np.abs(whitened))
+    whitened = np.append(whitened, 0)
+    return whitened

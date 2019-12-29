@@ -17,10 +17,13 @@ class Waveform(object):
         #double sampling_rate;
         #string component;
 
-    def __init__(self, path, filters = []):
+    def __init__(self, path):
         self._path = path
         tmp_matfile = scipy.io.loadmat(path)
         self._data =(tmp_matfile['data'][0]).flatten()
+        self._lat = float(tmp_matfile['lat'][0])
+        self._lon = float(tmp_matfile['lon'][0])
+        self._elev = float(tmp_matfile['elevation'][0])
         self._delta = float(tmp_matfile['delta'][0])
         self._starttime = UTCDateTime(tmp_matfile['starttime'][0])
         self._endtime = UTCDateTime(tmp_matfile['endtime'][0])
@@ -39,6 +42,9 @@ class Waveform(object):
 
     def set_starttime(self, starttime):
         self._starttime = starttime
+
+    def get_coordinates(self):
+        return [self._lat, self._lon, self._elev]
 
     def get_endtime(self):
         return self._endtime
@@ -72,42 +78,60 @@ class Waveform(object):
         #self._data[np.invert(A)] = -1
         self.data = A.astype(int).flatten()
 
-    def running_absolute_mean(self, filters, envsmooth = 1500, env_exp = 1.5, 
-                        min_weight = 0.1, taper_length = 1000, plot = False,
-                        broadband_filter = [100,1]):
-        self._data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
+    def running_absolute_mean(self, filters, filter_order = 4, envsmooth = 1500, 
+                    env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False,
+                    apply_broadband_filter = True, broadband_filter = [200,1]):
+    
+        self._data = (signal.detrend(waveform.data, type="linear" )) / np.power(10,9)
         nb = np.floor(envsmooth/self._delta)
-        weight = np.ones((self._data.shape[0]))
+        weight = np.ones((data.shape[0]))
         boxc = np.ones((int(nb)))/nb
         nyf = (1./2)*self._sampling_rate
         if (plot):
             plt.plot(self._data)
             plt.title("unfiltered data")
             plt.show()
-        [b,a] = signal.butter(
-            N = 3,
-            Wn = [1./broadband_filter[0]/nyf, 1./broadband_filter[1]/nyf], 
-            btype='bandpass'
-        )
-        self._data = signal.filtfilt(
-            b = b,
-            a = a,
-            x = self._data)
+        if (apply_broadband_filter):
+            [b,a] = signal.butter(
+                N = filter_order,
+                Wn = [1./broadband_filter[0]/nyf, 1./broadband_filter[1]/nyf], 
+                btype='bandpass'
+            )
+            data = signal.filtfilt(
+                b = b,
+                a = a,
+                x = self._data
+            )
         for filter in filters:
-            #print filter
-            [b,a] = signal.butter(3,[1./filter[0]/nyf, 1./filter[1]/nyf], btype='bandpass')
-            filtered_data = downweight_ends(signal.filtfilt(b,a,self._data), wlength = taper_length * self._sampling_rate)
+            [b,a] = signal.butter(
+                N = filter_order,
+                Wn = [1./filter[0]/nyf, 1./filter[1]/nyf], 
+                btype='bandpass'
+            )
+            filtered_data = signal.filtfilt(
+                b = b,
+                a = a,
+                x = self._data
+            )
+            filtered_data = downweight_ends(
+                data = filtered_data, 
+                wlength = taper_length * self._sampling_rate
+            )
             if (plot):
                 plt.plot(filtered_data)
                 plt.title("filtered data")
                 plt.show()
-            data_env = signal.convolve(abs(filtered_data),boxc,method="fft")
+
+            data_env = signal.convolve(
+                in1 = abs(filtered_data),
+                in2 = boxc,
+                method="fft"
+            )
             data_env = data_env[boxc.shape[0]/ 2 -1: -boxc.shape[0]/ 2]
             if (plot):
                 plt.plot(data_env)
                 plt.title("envelope")
                 plt.show()
-            #print data_env.shape, self._data.shape
             data_exponent = np.power(data_env, env_exp)
             weight = weight * data_exponent / np.mean(data_exponent)
             if (plot):
@@ -123,9 +147,12 @@ class Waveform(object):
             plt.plot(weight)
             plt.title("final weights")
             plt.show()
-        self._data = downweight_ends((self._data / weight),wlength = taper_length * self._sampling_rate) 
+        self._data = downweight_ends(
+            data = (self._data / weight),
+            wlength = taper_length *self._sampling_rate
+        )
         if (plot):
-            plt.plot(self._data)
+            plt.plot(data)
             plt.title("filtered data")
             plt.show()
 

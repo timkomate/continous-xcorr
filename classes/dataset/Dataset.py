@@ -13,17 +13,17 @@ class Dataset(object):
         self._years = years
 
     def read_dataset(self, file_type = ".mat"):
+        #print "READ!!!!"
         for component in self._components:
             for year in self._years:
                 root_dir = "%s/%s/%s/" % (self._path, component, year)
-                print "root",root_dir
+                #print root_dir
                 for dir_name, subdir_list, file_list in os.walk(root_dir):
                     for fname in file_list:
                         print(fname)
                         network = fname.split('.')[0]
                         station = fname.split('.')[1]
                         if file_type in fname:
-                            print "jippi"
                             self.push_to_dataset(component,network,station,dir_name,fname)
     
     def print_dataset(self):

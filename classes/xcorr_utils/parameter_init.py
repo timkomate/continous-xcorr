@@ -10,15 +10,16 @@ components = config.get("DATASET", "components").split(",")
 years = config.get("DATASET", "years").split(",")
 build_dataset = config.getboolean("DATASET", "build_dataset")
 dataset_name = config.get("DATASET", "dataset_name")
+file_type = config.get("DATASET", "file_type")
 
-#[XCORR]
+#[XCORR-ACORR]
 maxlag = config.getint("XCORR", "maxlag")
+max_waveforms = config.getint("XCORR", "max_waveforms")
 input_path = config.get("XCORR", "input_path")
 number_of_cpus = config.getint("XCORR", "number_of_cpus")
 verbose = config.getboolean("XCORR", "verbose")
 save_path = config.get("XCORR", "save_path")
 extended_save = config.getboolean("XCORR", "extended_save")
-file_type = config.get("XCORR", "file_type")
 
 #[TIMEDOMAIN-NORMALIZATION]
 binary_normalization = config.getboolean("TIMEDOMAIN-NORMALIZATION", "binary_normalization")
@@ -34,10 +35,15 @@ envsmooth = config.getint("TIMEDOMAIN-NORMALIZATION", "envsmooth")
 env_exp = config.getfloat("TIMEDOMAIN-NORMALIZATION", "env_exp")
 min_weight = config.getfloat("TIMEDOMAIN-NORMALIZATION", "min_weight")
 taper_lenght_timedomain = config.getint("TIMEDOMAIN-NORMALIZATION", "taper_lenght_timedomain")
-broadband_filter = map(float, config.get("TIMEDOMAIN-NORMALIZATION", "broadband_filter").split(","))
+apply_broadband_filter_tdn = config.getboolean("TIMEDOMAIN-NORMALIZATION", "apply_broadband_filter_tdn")
+broadband_filter_tdn = map(float, config.get("TIMEDOMAIN-NORMALIZATION", "broadband_filter_tdn").split(","))
+filter_order_tdn = config.getint("TIMEDOMAIN-NORMALIZATION", "filter_order_tdn")
 plot = config.getboolean("TIMEDOMAIN-NORMALIZATION", "plot")
 
 #[SPECTRAL-WHITENING]
 spectrumexp = config.getfloat("SPECTRAL-WHITENING", "spectrumexp")
 espwhitening = config.getfloat("SPECTRAL-WHITENING", "espwhitening")
 taper_length_whitening = config.getint("SPECTRAL-WHITENING", "taper_length_whitening")
+apply_broadband_filter_whitening = config.getboolean("SPECTRAL-WHITENING", "apply_broadband_filter_whitening")
+broadband_filter_whitening = map(float, config.get("SPECTRAL-WHITENING", "broadband_filter_whitening").split(","))
+filter_order_whitening = config.getint("SPECTRAL-WHITENING", "filter_order_whitening")

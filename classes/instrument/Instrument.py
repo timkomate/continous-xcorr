@@ -9,50 +9,63 @@ class Instrument(object):
     #Station station
     #Waveform z_component
     
-    def __init__(self, Station, filters = []):
+    def __init__(self, Station):
         self._station = Station
-        self._waveforms = []
-        self._filters = filters
+        self._waveforms = {}
 
     def set_filters(self, filters):
         self._filters = filters
     
-    def push_waveform(self, path, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, 
-                taper_length = 1000, plot = False):
+    def push_waveform(self, path, component, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, 
+                taper_length = 1000, plot = False, normalization = None, apply_broadband_filter = True,
+                broadband_filter = [200,1], filter_order = 4):
         waveform = Waveform(path)
-        if (parameter_init.running_absolute_mean_normalization):
-            print "ramn"
+        if (len(self._waveforms) == 0):
+            lat,lon,elev = waveform.get_coordinates()
+            #print type(self._station)
+            self._station.set_coordinates(lat,lon,elev)
+        if component not in self._waveforms:
+            self._waveforms[component] = []
+        if (normalization == "RAMN"):
             waveform.running_absolute_mean(
                 filters = self._filters,
+                filter_order= filter_order,
                 envsmooth = envsmooth,
                 env_exp = env_exp,
                 min_weight = min_weight, 
                 taper_length = taper_length, 
-                plot = False
+                plot = False,
+                apply_broadband_filter = apply_broadband_filter,
+                broadband_filter = broadband_filter
             )
-        elif (parameter_init.binary_normalization):
-            print "bn"
+        elif (normalization == "BN"):
             waveform.binary_normalization()
-        self._waveforms.append(waveform)
+        self._waveforms[component].append(waveform)
 
-    def get_sampling_rate(self):
-        return self._waveforms[0].get_sampling_rate()
+    def get_sampling_rate(self, component):
+        return self._waveforms[component][0].get_sampling_rate()
 
     def clear(self):
-        self._waveforms = []
+        self._waveforms = {}
     
     def get_station_coordinates(self):
         return self._station.get_station_coordinates()
 
+    def get_station(self):
+        return self._station
+
     def get_station_code(self):
         return self._station.get_station_code()
 
-    def get_waveform(self, i):
-        return self._waveforms[i]
+    def get_waveform(self, component, i):
+        return self._waveforms[component][i]
 
-    def print_waveforms(self, extended = False):
-        i = 0
-        while i < len(self._waveforms):
-            self._waveforms[i].print_waveform(extended)
-            i += 1
+    def print_waveforms(self, component, extended = False):
+        if (len(self._waveforms) > 0):
+            i = 0
+            while i < len(self._waveforms[component]):
+                self._waveforms[component][i].print_waveform(extended)
+                i += 1
+        else:
+            print "Empty container"
 

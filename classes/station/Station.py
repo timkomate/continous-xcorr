@@ -12,6 +12,11 @@ class Station(object):
         print "Latitude:", self._lat
         print "Longitude:", self._lon
         print "Elevation:", self._elev
+
+    def set_coordinates(self, lat, lon, elev):
+        self._lat = lat
+        self._lon = lon
+        self._elev = elev
     
     def get_network_code(self):
         return self._network_code
