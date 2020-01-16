@@ -57,6 +57,9 @@ def downweight_ends(data, wlength):
     data[-int(wlength):] = data[-int(wlength):]*w
     return data
 
+def nextpow2(x):
+    return 1<<(x-1).bit_length()
+
 def spectral_whitening( data, sampling_rate, spectrumexp = 0.7, 
                         espwhitening = 0.05, taper_length = 100, 
                         apply_broadband_filter = True, broadband_filter = [200,1], 
@@ -72,7 +75,7 @@ def spectral_whitening( data, sampling_rate, spectrumexp = 0.7,
     )
     spectrum = np.fft.rfft(
         a = data,
-        #n= nextpow2(len(data))
+        n = nextpow2(len(data))
     )
     spectrum_abs = np.abs(spectrum)
     if (plot):
@@ -99,7 +102,7 @@ def spectral_whitening( data, sampling_rate, spectrumexp = 0.7,
     #whitening
     spectrum = np.divide(spectrum, np.power(spectrum_abs,spectrumexp))
     #spectrum = downweight_ends(spectrum, wlength = (taper_length * sampling_rate))
-    spectrum[0] = 0
+    #spectrum[0] = 0
 
     if (plot):
         plt.plot(f,np.abs(spectrum))
@@ -108,8 +111,9 @@ def spectral_whitening( data, sampling_rate, spectrumexp = 0.7,
 
     whitened = np.fft.irfft(
         a = spectrum,
-        #n = len(data)
+        n = nextpow2(len(data))
     )
+    whitened = whitened[0:len(data)]
         
     whitened = signal.detrend(
         data = whitened,
@@ -139,6 +143,52 @@ def spectral_whitening( data, sampling_rate, spectrumexp = 0.7,
         plt.title("whitened signal after filtering")
         plt.show()
     #remove mean
-    whitened = whitened * np.mean(np.abs(whitened))
-    whitened = np.append(whitened, 0)
+    whitened = whitened - np.mean(np.abs(whitened))
     return whitened
+
+
+
+def calc_distance_deg(s_coordinates, e_coordinates):
+    slat = s_coordinates[0]
+    slon = s_coordinates[1]
+    elat = e_coordinates[0]
+    elon = e_coordinates[1]
+    FLATTENING = 0.00335281066474
+    f = (1. - FLATTENING) * (1. - FLATTENING)
+    geoc_elat = math.atan(f * math.tan((math.pi/180) * elat))
+    celat = math.cos(geoc_elat)
+    selat = math.sin(geoc_elat)
+    geoc_slat = math.atan(f * math.tan((math.pi/180) * slat))
+    rdlon = (math.pi/180) * (elon - slon)
+    cslat = math.cos(geoc_slat)
+    sslat = math.sin(geoc_slat)
+    cdlon = math.cos(rdlon)
+    sdlon = math.sin(rdlon)
+    cdel = sslat * selat + cslat * celat * cdlon
+    cdel if cdel<1 else 1
+    cdel if cdel>-1 else -1
+    delta = (180/math.pi) * math.acos(cdel)
+    return delta
+
+def calc_distance_km(s_coordinates, e_coordinates):
+    slat = math.radians(s_coordinates[0])
+    slon = math.radians(s_coordinates[1])
+    elat = math.radians(e_coordinates[0])
+    elon = math.radians(e_coordinates[1])
+    R = 6371.0
+    dlon = slon - elon
+    dlat = slat - elat
+    a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def load_station_infos(json_path):
+    with open(json_path, 'r') as fp:
+        data = json.load(fp)
+    return data
+
+def find_station_coordinates(data, network, station):
+    elev = data[network][station]["elevation"]
+    lat = data[network][station]["latitude"]
+    lon = data[network][station]["longitude"]
+    return [lat, lon, elev]

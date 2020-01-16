@@ -1,5 +1,5 @@
 import glob
-from ..xcorr_utils.xcorr_utils import downweight_ends
+from ..xcorr_utils.xcorr_utils import downweight_ends, spectral_whitening
 from ..instrument.Instrument import Instrument
 from ..station.Station import Station
 from ..xcorr_utils.setup_logger import logger
@@ -13,22 +13,35 @@ import json
 
 
 class Xcorrelator(object):
-    def __init__(self,component1, network1, station1, component2, network2, station2, paths, json_path):
-        self._inst1 = "%s.%s.%s*.mat" % (network1, station1, component1)
-        self._inst2 = "%s.%s.%s*.mat" % (network2, station2, component2)
+    def __init__(self,component1, network1, station1, component2, network2, station2, paths):
+        self._inst1 = "{}.{}.{}*.mat".format(network1, station1, component1)
+        self._inst2 = "{}.{}.{}*.mat".format(network2, station2, component2)
         self._paths = np.sort(paths)
-        station_data_dict = Xcorrelator.load_station_infos(json_path)
-        [lat1, lon1, elev1] = Xcorrelator.find_station_coordinates(station_data_dict, network1, station1)
-        [lat2, lon2, elev2] = Xcorrelator.find_station_coordinates(station_data_dict, network2, station2)
-        sta1 = Station(network1, station1, lat1, lon1, elev1)
-        sta2 = Station(network2, station2, lat2, lon2, elev2)
-        self._distance = Xcorrelator.calc_distance_km(sta1.get_coordinates(), sta2.get_coordinates())
+        self._component1 = component1
+        self._component2 = component2
+        sta1 = Station(network1, station1, None, None, None)
+        sta2 = Station(network2, station2, None, None, None)
+        #self._distance = Xcorrelator.calc_distance_km(sta1.get_coordinates(), sta2.get_coordinates())
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
-        self._c = 0
+        self._c = len(self._paths)
+        self._offset = 0
+    
+    def init_matrix(self, maxlag = 600):
+        self._sampling_rate = self._instrument1.get_sampling_rate(
+            component = self._component1
+        )
+        shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
+        self._xcorrelations = np.zeros(shape = shape)
+        self._distance = Xcorrelator.calc_distance_km(
+            s_coordinates = self._instrument1.get_station_coordinates(), 
+            e_coordinates = self._instrument2.get_station_coordinates()
+        )
 
-    def read_waveforms(self, filters = [], envsmooth = 1500, env_exp = 1.5, 
-                min_weight = 0.1, taper_length = 1000, plot = False):
+    def read_waveforms(self, maxlag = 600, max_waveforms = 100, filters = [], filter_order = 4,
+                    envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000, 
+                    plot = False, apply_broadband_filter_tdn = False, 
+                    broadband_filter_tdn = [200,1]):
         if (parameter_init.binary_normalization):
             self._normalization_method = "BN"
         elif (parameter_init.running_absolute_mean_normalization):
@@ -37,59 +50,91 @@ class Xcorrelator(object):
             self._normalization_method = "WN"
         self._instrument1.clear()
         self._instrument2.clear()
-        self._c = len(self._paths)
         self._instrument1.set_filters(filters)
         self._instrument2.set_filters(filters)
-        for path in self._paths:
-            file1 = glob.glob(path + "/" + self._inst1)[0]
-            file2 = glob.glob(path + "/" + self._inst2)[0]
+        if (max_waveforms > 0):
+            self._max_waveforms = max_waveforms
+        else:
+            self._max_waveforms = self._c
+        i = 0
+        rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
+        while i < rem_waveform:
+            file1 = glob.glob("{}/{}".format(self._paths[i + self._offset], self._inst1))[0]
+            file2 = glob.glob("{}/{}".format(self._paths[i + self._offset], self._inst2))[0]
             print file1, file2
             self._instrument1.push_waveform(
                 path = file1,
+                component = self._component1,
                 envsmooth = envsmooth,
                 env_exp = env_exp,
                 min_weight = min_weight,
                 taper_length = taper_length,
-                plot = plot
+                plot = plot,
+                normalization = self._normalization_method,
+                apply_broadband_filter =apply_broadband_filter_tdn,
+                broadband_filter = broadband_filter_tdn,
+                filter_order= filter_order
             )
             self._instrument2.push_waveform(
                 path = file2,
+                component = self._component2,
                 envsmooth = envsmooth,
                 env_exp = env_exp,
                 min_weight = min_weight,
                 taper_length = taper_length,
-                plot = plot
+                plot = plot,
+                normalization = self._normalization_method,
+                apply_broadband_filter =apply_broadband_filter_tdn,
+                broadband_filter = broadband_filter_tdn,
+                filter_order= filter_order
             )
+            i += 1
+        if (self._offset == 0):
+            self.init_matrix(maxlag)
+        #raw_input()
 
     def xcorr(self, maxlag = 600, spectrumexp = 0.7, 
-            espwhitening = 0.05, taper_length = 100, verbose = False):
+            espwhitening = 0.05, taper_length_whitening = 100, 
+            verbose = False, apply_broadband_filter = False,
+            broadband_filter = [200,1], filter_order = 4):
         #print "Cross-correlation..."
         i = 0
         #start = timer()
-        self._sampling_rate = self._instrument1.get_sampling_rate()
-        shape = (self._c, int((maxlag*self._sampling_rate*2) + 1))
-        self._xcorrelations = np.zeros(shape = shape)
-        while i < self._c:
-            a = self._instrument1.get_waveform(i).get_data()
-            b = self._instrument2.get_waveform(i).get_data()
+        rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
+        while i < rem_waveform:
+            j = i + self._offset
+            print i, j
+            a = self._instrument1.get_waveform(
+                component = self._component1,
+                i = i
+            ).get_data()
+            b = self._instrument2.get_waveform(
+                component = self._component2,
+                i = i
+            ).get_data()
             ccf = signal.correlate(a,b, mode = "full", method="fft")
             tcorr = np.arange(-a.shape[0] + 1, a.shape[0])
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = self.spectral_whitening(
-                ccf = ccf, 
-                spectrumexp = spectrumexp, 
-                espwhitening = 0.05,
-                taper_length = 100,
+            ccf = spectral_whitening(
+                data = ccf,
+                sampling_rate = self._sampling_rate,
+                spectrumexp = spectrumexp,
+                espwhitening = espwhitening,
+                taper_length = taper_length_whitening,
+                apply_broadband_filter = apply_broadband_filter,
+                broadband_filter = broadband_filter,
+                filter_order = filter_order,
                 plot = verbose,
             )
-            self._xcorrelations[i,:] = ccf
+            self._xcorrelations[j,:] = ccf
             i += 1
         #end = timer()
         #print "Cross-correlation:", end - start, "seconds\n"
-        self._stacked_ccf = np.sum(self._xcorrelations, axis=0)
+        self._stacked_ccf = np.sum(self._xcorrelations, axis=0) #/ self._c
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
+        self._offset += self._max_waveforms
     
     def calculate_simmetric_part(self):
         size = self._stacked_ccf.size
@@ -104,9 +149,12 @@ class Xcorrelator(object):
 
     def correct_waveform_lengths(self):
         i = 0
-        while i < self._c:
-            a = self._instrument1.get_waveform(i)
-            b = self._instrument2.get_waveform(i)
+        #start = timer()
+        rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
+        while i < rem_waveform:
+            print i
+            a = self._instrument1.get_waveform(self._component1, i)
+            b = self._instrument2.get_waveform(self._component2, i)
             dt = a.get_dt()
             s1 = a.get_starttime()
             s2 = b.get_starttime()
@@ -138,68 +186,6 @@ class Xcorrelator(object):
             a.recalculate_ntps()
             b.recalculate_ntps()
             i += 1
-
-    def spectral_whitening(self, ccf, spectrumexp = 0.7, espwhitening = 0.05, taper_length = 100, plot = False):
-        '''
-        apply spectral whitening to np.array ccf, divide spectrum of data1 by its smoothed version
-    
-        data1: np.array, time series vector
-        wlen: int or None (default), length of boxcar for smoothing of spectrum, number of (spectral) samples
-    
-        return:
-            np.array, spectrally whitened time series vector
-        '''
-        if (plot):
-            plt.plot(ccf)
-            plt.title("original dataset")
-            plt.show()
-        spectrum =(np.fft.rfft(signal.detrend(ccf,type="linear")))
-        spectrum_abs = np.abs(spectrum)
-        if (plot):
-            f = np.fft.rfftfreq(len(ccf), d=1./self._sampling_rate)
-            plt.plot(f,spectrum)
-            plt.plot(f,spectrum_abs)
-            plt.title("specrtum and ampl. spectrum")
-            plt.show()
-        water_level = np.mean(spectrum_abs) * espwhitening
-        spectrum_abs[(spectrum_abs < water_level)] = water_level
-        
-        if (plot):
-            plt.plot(f,spectrum_abs)
-            plt.title("spectrum after water level")
-            plt.show()
-            fig, axs = plt.subplots(3)
-            fig.suptitle('Vertically stacked subplots')
-            axs[0].plot(spectrum)
-            axs[1].plot(np.power(spectrum_abs,spectrumexp))
-            axs[2].plot(spectrum_abs)
-            plt.show()
-        
-        #whitening
-        spectrum = np.divide(spectrum, (np.power(spectrum_abs,spectrumexp)))
-        #spectrum = downweight_ends(spectrum, wlength = (taper_length * self._sampling_rate))
-        spectrum[0] = 0
-
-        if (plot):
-            plt.plot(f,np.abs(spectrum))
-            plt.title("spectrum after whitening")
-            plt.show()
-
-        whitened = np.fft.irfft((spectrum))
-        whitened = signal.detrend(whitened,type="linear")
-        whitened =  downweight_ends(whitened,wlength= (taper_length * self._sampling_rate))
-
-        nyf = (1./2)*self._sampling_rate
-        [b,a] = signal.butter(3,[(1./100)/nyf,(1./1)/nyf], btype='bandpass')
-        whitened = signal.filtfilt(b,a,whitened)
-        if (plot):
-            plt.plot(whitened)
-            plt.title("whitened signal after filtering")
-            plt.show()
-        #remove mean
-        whitened = whitened * np.mean(np.abs(whitened))
-        whitened = np.append(whitened, 0)
-        return whitened
 
     def save_ccf(self, path, tested_parameter = "", extended_save = True):
         compflag = "ZZ"
@@ -234,27 +220,9 @@ class Xcorrelator(object):
                 "Station2" : station2
             }
         io.savemat(save_path, matfile)
-        #print "File has been saved as %s" % (save_path)
+        print "File has been saved as %s" % (save_path)
         return save_path
         
-
-    def fft(self):
-        i = 0
-        while i < self._c:
-            a = self._instrument1.get_waveform(i).get_data()
-            print type(a)
-            start = timer()
-            fft1 = fftpack.fft(a)
-            fft2 = np.fft.fft(a)
-            end = timer()
-            print (end - start)
-            fig, axs = plt.subplots(3)
-            axs[0].plot(fft1)
-            axs[1].plot(fft2)
-            axs[2].plot(fft1-fft2)
-            plt.show()
-            i += 1
-
     @staticmethod
     def calc_distance_deg(s_coordinates, e_coordinates):
         slat = s_coordinates[0]
@@ -307,3 +275,4 @@ class Xcorrelator(object):
 
 #TODO
 #The stripped waveforms sometimes not equally long. Needs to check
+#Check if the sampling rate is the same for both waveforms

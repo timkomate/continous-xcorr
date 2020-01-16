@@ -1,32 +1,100 @@
-from ..xcorrealtor.Xcorrelator import Xcorrelator
+from ..xcorrelator.Xcorrelator import Xcorrelator
 from ..dataset.Dataset import Dataset
+from ..xcorr_utils import parameter_init
+from ..xcorr_utils.setup_logger import logger
 import numpy as np
-
+import glob
+import math
+import pandas as pd
 from timeit import default_timer as timer
 
 start = timer()
 
-filters = [[100,10],[10,5],[5,1]]
-#filters = []
-#data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
-#data = Dataset("/home/mate/PhD/codes/continous-xcorr/test_dataset",["HHZ"])
-data = Dataset("/gaussdata/Seismologie/PannonianBasin/data/2017",["HHZ"])
-#data = Dataset("/gaussdata/Seismologie/PannonianBasin/data",["HHZ"])
-#data = Dataset("/media/timko/Maxtor/",["HHZ"])
-#data = Dataset("/maxwelldata/pannonian/PannonianBasin/data",["HHZ"])
+data = Dataset(
+    path = parameter_init.dataset_path,
+    components = parameter_init.components,
+    years = parameter_init.years
+)
 
-#data.read_dataset()
-#data.save_json("./dataset.json")
-data.load_json("./dataset.json")
-intersect =  data.intersect("HHZ","Z3","A263A","HHZ","HU","ABAH")
+if(parameter_init.build_dataset):
+    data.read_dataset(
+        file_type = parameter_init.file_type
+    )
+    data.save_json(parameter_init.dataset_name)
 
-xc = Xcorrelator("HHZ","Z3","A263A","HHZ","HU","ABAH", intersect, "./stations.json")
-xc.read_waveforms(filters= filters)
-xc.correct_waveform_lengths()
-#for i in np.arange(0.1,2.5,0.1):
-xc.xcorr(600, spectrumexp= 0.7)
-#xc.save_figures("./figures/")
-end = timer()
-print "Script finished:", end - start
-xc.save_ccf("./ccfs")
-#xc.fft()
+
+data.load_json(parameter_init.dataset_name)
+input_path = parameter_init.input_path
+input_list = [f for f in glob.glob("%s/*.text*" % (input_path))]
+print input_list
+
+
+for file in input_list:
+    print file
+    df = pd.read_csv(
+        filepath_or_buffer = file, 
+        delimiter= " ",
+        header= None,
+        comment= "#"
+    )
+    df.columns = ["network1", "station1", "component1", "network2", "station2", "component2"]
+    for index, row in df.iterrows():
+        start = timer()
+        network1 = row["network1"]
+        station1 = row["station1"]
+        component1 = row["component1"]
+        network2 = row["network2"]
+        station2 = row["station2"]
+        component2 = row["component2"]
+        intersect =  data.intersect(
+            component1 = component1,
+            network1 = network1,
+            station1 = station1,
+            component2 = component2,
+            network2 = network2,
+            station2 = station2
+        )
+        xc = Xcorrelator(
+            component1 = component1,
+            network1 = network1,
+            station1 = station1,
+            component2 = component2,
+            network2 = network2,
+            station2 = station2,
+            paths = intersect,
+        )
+
+        t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
+
+        print t
+        for i in range(int(t)):
+            xc.read_waveforms(
+                max_waveforms = parameter_init.max_waveforms,
+                maxlag = parameter_init.maxlag,
+                filters = parameter_init.filters,
+                filter_order = parameter_init.filter_order_tdn,
+                envsmooth = parameter_init.envsmooth,
+                env_exp = parameter_init.env_exp,
+                min_weight = parameter_init.min_weight,
+                taper_length = parameter_init.taper_lenght_timedomain,
+                plot = parameter_init.plot,
+                apply_broadband_filter_tdn= parameter_init.apply_broadband_filter_tdn,
+                broadband_filter_tdn = parameter_init.broadband_filter_tdn
+            )  
+            xc.correct_waveform_lengths()
+            xc.xcorr(
+                maxlag = parameter_init.maxlag,
+                spectrumexp = parameter_init.spectrumexp,
+                espwhitening = parameter_init.espwhitening,
+                taper_length_whitening = parameter_init.taper_length_whitening,
+                verbose = parameter_init.plot,
+                apply_broadband_filter = parameter_init.apply_broadband_filter_whitening,
+                broadband_filter = parameter_init.broadband_filter_whitening,
+                filter_order = parameter_init.filter_order_whitening
+            )
+        save_path = xc.save_ccf(parameter_init.save_path, extended_save= True)
+        logger.debug("{}.{}.{}-{}.{}.{}::{}".format(
+            network1,station1,component1, 
+            network2,station2,component2, 
+            timer() - start)
+        )

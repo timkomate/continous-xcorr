@@ -18,6 +18,7 @@ class Waveform(object):
         #string component;
 
     def __init__(self, path):
+
         self._path = path
         tmp_matfile = scipy.io.loadmat(path)
         self._data =(tmp_matfile['data'][0]).flatten()
@@ -82,7 +83,7 @@ class Waveform(object):
                     env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False,
                     apply_broadband_filter = True, broadband_filter = [200,1]):
     
-        self._data = (signal.detrend(waveform.data, type="linear" )) / np.power(10,9)
+        data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((data.shape[0]))
         boxc = np.ones((int(nb)))/nb
@@ -147,14 +148,14 @@ class Waveform(object):
             plt.plot(weight)
             plt.title("final weights")
             plt.show()
-        self._data = downweight_ends(
-            data = (self._data / weight),
-            wlength = taper_length *self._sampling_rate
-        )
         if (plot):
             plt.plot(data)
             plt.title("filtered data")
             plt.show()
+        self._data = downweight_ends(
+            data = (self._data / weight),
+            wlength = taper_length *self._sampling_rate
+        )
 
     def print_waveform(self,extended = False):
         print "Path:", self._path

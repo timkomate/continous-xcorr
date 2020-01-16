@@ -95,17 +95,10 @@ class Acorrelator(object):
                 filter_order = filter_order,
                 plot = verbose,
             )
-            self._correlations[i,:] = acf
+            self._correlations[j,:] = acf
             i += 1
         self._stacked_acf = np.sum(self._correlations, axis=0)
         self._offset += self._max_waveforms
-
-    def save_figures(self,path):
-        plt.imshow(self._xcorrelations / self._xcorrelations.max(axis = 1)[:,np.newaxis], aspect = "auto",  cmap = "bone")
-        plt.savefig("%s/daily_ccfs.png" % path)
-        
-        plt.plot(self._stacked_ccf)
-        plt.savefig("%s/stacked_ccf.png" % path)
 
     def save_acf(self, path, tested_parameter = "", extended_save = True):
         compflag = self._component
@@ -136,74 +129,3 @@ class Acorrelator(object):
             }
         io.savemat(save_path, matfile)
         return save_path
-        
-
-    def fft(self):
-        i = 0
-        while i < self._c:
-            a = self._instrument1.get_waveform(i).get_data()
-            print type(a)
-            start = timer()
-            fft1 = fftpack.fft(a)
-            fft2 = np.fft.fft(a)
-            end = timer()
-            print (end - start)
-            fig, axs = plt.subplots(3)
-            axs[0].plot(fft1)
-            axs[1].plot(fft2)
-            axs[2].plot(fft1-fft2)
-            plt.show()
-            i += 1
-
-    @staticmethod
-    def calc_distance_deg(s_coordinates, e_coordinates):
-        slat = s_coordinates[0]
-        slon = s_coordinates[1]
-        elat = e_coordinates[0]
-        elon = e_coordinates[1]
-        FLATTENING = 0.00335281066474
-        f = (1. - FLATTENING) * (1. - FLATTENING)
-        geoc_elat = math.atan(f * math.tan((math.pi/180) * elat))
-        celat = math.cos(geoc_elat)
-        selat = math.sin(geoc_elat)
-        geoc_slat = math.atan(f * math.tan((math.pi/180) * slat))
-        rdlon = (math.pi/180) * (elon - slon)
-        cslat = math.cos(geoc_slat)
-        sslat = math.sin(geoc_slat)
-        cdlon = math.cos(rdlon)
-        sdlon = math.sin(rdlon)
-        cdel = sslat * selat + cslat * celat * cdlon
-        cdel if cdel<1 else 1
-        cdel if cdel>-1 else -1
-        delta = (180/math.pi) * math.acos(cdel)
-        return delta
-    
-    @staticmethod
-    def calc_distance_km(s_coordinates, e_coordinates):
-        slat = math.radians(s_coordinates[0])
-        slon = math.radians(s_coordinates[1])
-        elat = math.radians(e_coordinates[0])
-        elon = math.radians(e_coordinates[1])
-        R = 6371.0
-        dlon = slon - elon
-        dlat = slat - elat
-        a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
-    
-    @staticmethod
-    def load_station_infos(json_path):
-        with open(json_path, 'r') as fp:
-            data = json.load(fp)
-        return data
-    
-    @staticmethod
-    def find_station_coordinates(data, network, station):
-        elev = data[network][station]["elevation"]
-        lat = data[network][station]["latitude"]
-        lon = data[network][station]["longitude"]
-        return [lat, lon, elev]
-
-
-#TODO
-#The stripped waveforms sometimes not equally long. Needs to check
