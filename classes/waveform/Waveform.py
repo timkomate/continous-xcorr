@@ -83,7 +83,7 @@ class Waveform(object):
                     env_exp = 1.5, min_weight = 0.1, taper_length = 1000, plot = False,
                     apply_broadband_filter = True, broadband_filter = [200,1]):
     
-        data = (signal.detrend(self._data, type="linear" )) / np.power(10,9)
+        data = (signal.detrend(self._data, type="linear" )) #/ np.power(10,9)
         nb = np.floor(envsmooth/self._delta)
         weight = np.ones((data.shape[0]))
         boxc = np.ones((int(nb)))/nb

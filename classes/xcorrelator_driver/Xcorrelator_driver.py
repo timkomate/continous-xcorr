@@ -65,7 +65,11 @@ class Xcorrelator_driver(object):
                 file_type= parameter_init.file_type
             )
             
-            t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
+            if (parameter_init.max_waveforms > 0):
+                t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
+            else:
+                t = 1
+
             for i in range(int(t)):
                 read = timer()
                 xc.read_waveforms(
@@ -76,7 +80,7 @@ class Xcorrelator_driver(object):
                     envsmooth = parameter_init.envsmooth,
                     env_exp = parameter_init.env_exp,
                     min_weight = parameter_init.min_weight,
-                    taper_length = parameter_init.taper_lenght_timedomain,
+                    taper_length = parameter_init.taper_length_timedomain,
                     plot = parameter_init.plot,
                     apply_broadband_filter_tdn= parameter_init.apply_broadband_filter_tdn,
                     broadband_filter_tdn = parameter_init.broadband_filter_tdn
@@ -92,9 +96,10 @@ class Xcorrelator_driver(object):
                     verbose = parameter_init.plot,
                     apply_broadband_filter = parameter_init.apply_broadband_filter_whitening,
                     broadband_filter = parameter_init.broadband_filter_whitening,
+                    apply_spectral_whitening = parameter_init.apply_spectral_whitening,
                     filter_order = parameter_init.filter_order_whitening
                 )
-
+            xc.calculate_linear_stack()
             save_path = xc.save_ccf(
                 path = parameter_init.save_path,
                 extended_save = parameter_init.extended_save

@@ -25,7 +25,7 @@ if(parameter_init.build_dataset):
 
 data.load_json(parameter_init.dataset_name)
 input_path = parameter_init.input_path
-input_list = [f for f in glob.glob("%s/*.text*" % (input_path))]
+input_list = [f for f in glob.glob("{}/*.text*".format(input_path))]
 print input_list
 
 
@@ -63,10 +63,12 @@ for file in input_list:
             station2 = station2,
             paths = intersect,
         )
+        if (parameter_init.max_waveforms > 0):
+            t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
+        else:
+            t = 1
+        #print t
 
-        t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
-
-        print t
         for i in range(int(t)):
             xc.read_waveforms(
                 max_waveforms = parameter_init.max_waveforms,
@@ -76,7 +78,7 @@ for file in input_list:
                 envsmooth = parameter_init.envsmooth,
                 env_exp = parameter_init.env_exp,
                 min_weight = parameter_init.min_weight,
-                taper_length = parameter_init.taper_lenght_timedomain,
+                taper_length = parameter_init.taper_length_timedomain,
                 plot = parameter_init.plot,
                 apply_broadband_filter_tdn= parameter_init.apply_broadband_filter_tdn,
                 broadband_filter_tdn = parameter_init.broadband_filter_tdn
@@ -90,8 +92,10 @@ for file in input_list:
                 verbose = parameter_init.plot,
                 apply_broadband_filter = parameter_init.apply_broadband_filter_whitening,
                 broadband_filter = parameter_init.broadband_filter_whitening,
+                apply_spectral_whitening = parameter_init.apply_spectral_whitening,
                 filter_order = parameter_init.filter_order_whitening
             )
+        xc.calculate_linear_stack()
         save_path = xc.save_ccf(parameter_init.save_path, extended_save= True)
         logger.debug("{}.{}.{}-{}.{}.{}::{}".format(
             network1,station1,component1, 

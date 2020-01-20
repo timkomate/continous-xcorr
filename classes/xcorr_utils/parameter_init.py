@@ -34,13 +34,14 @@ while i <= filter_num:
 envsmooth = config.getint("TIMEDOMAIN-NORMALIZATION", "envsmooth")
 env_exp = config.getfloat("TIMEDOMAIN-NORMALIZATION", "env_exp")
 min_weight = config.getfloat("TIMEDOMAIN-NORMALIZATION", "min_weight")
-taper_lenght_timedomain = config.getint("TIMEDOMAIN-NORMALIZATION", "taper_lenght_timedomain")
+taper_length_timedomain = config.getint("TIMEDOMAIN-NORMALIZATION", "taper_length_timedomain")
 apply_broadband_filter_tdn = config.getboolean("TIMEDOMAIN-NORMALIZATION", "apply_broadband_filter_tdn")
 broadband_filter_tdn = map(float, config.get("TIMEDOMAIN-NORMALIZATION", "broadband_filter_tdn").split(","))
 filter_order_tdn = config.getint("TIMEDOMAIN-NORMALIZATION", "filter_order_tdn")
 plot = config.getboolean("TIMEDOMAIN-NORMALIZATION", "plot")
 
 #[SPECTRAL-WHITENING]
+apply_spectral_whitening = config.getboolean("SPECTRAL-WHITENING", "apply_spectral_whitening")
 spectrumexp = config.getfloat("SPECTRAL-WHITENING", "spectrumexp")
 espwhitening = config.getfloat("SPECTRAL-WHITENING", "espwhitening")
 taper_length_whitening = config.getint("SPECTRAL-WHITENING", "taper_length_whitening")

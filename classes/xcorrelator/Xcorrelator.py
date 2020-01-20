@@ -50,6 +50,10 @@ class Xcorrelator(object):
             self._normalization_method = "RAMN"
         else:
             self._normalization_method = "WN"
+        if (parameter_init.apply_spectral_whitening):
+            self._whitening = "W"
+        else:
+            self._whitening = ""
         self._instrument1.clear()
         self._instrument2.clear()
         self._instrument1.set_filters(filters)
@@ -98,7 +102,8 @@ class Xcorrelator(object):
     def xcorr(self, maxlag = 600, spectrumexp = 0.7, 
             espwhitening = 0.05, taper_length_whitening = 100, 
             verbose = False, apply_broadband_filter = False,
-            broadband_filter = [200,1], filter_order = 4):
+            apply_spectral_whitening = True, broadband_filter = [200,1], 
+            filter_order = 4):
         i = 0
         rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
         while i < rem_waveform:
@@ -117,8 +122,6 @@ class Xcorrelator(object):
                 component = self._component1,
                 i = i
             ))
-            #print starttime, rem_waveform
-
             self._starttime_seg[0,j] = starttime
             #print self._starttime_seg
             ccf = signal.correlate(a,b, mode = "full", method="fft")
@@ -126,22 +129,26 @@ class Xcorrelator(object):
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
             self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
             ccf = ccf[dN]
-            ccf = spectral_whitening(
-                data = ccf,
-                sampling_rate = self._sampling_rate,
-                spectrumexp = spectrumexp,
-                espwhitening = espwhitening,
-                taper_length = taper_length_whitening,
-                apply_broadband_filter = apply_broadband_filter,
-                broadband_filter = broadband_filter,
-                filter_order = filter_order,
-                plot = verbose,
-            )
+            if (apply_spectral_whitening):
+                ccf = spectral_whitening(
+                    data = ccf,
+                    sampling_rate = self._sampling_rate,
+                    spectrumexp = spectrumexp,
+                    espwhitening = espwhitening,
+                    taper_length = taper_length_whitening,
+                    apply_broadband_filter = apply_broadband_filter,
+                    broadband_filter = broadband_filter,
+                    filter_order = filter_order,
+                    plot = verbose,
+                )
             self._xcorrelations[j,:] = ccf
             i += 1
-        self._stacked_ccf = np.sum(self._xcorrelations, axis=0) #/ self._c
-        self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
         self._offset += self._max_waveforms
+
+    def calculate_linear_stack(self):
+        self._stacked_ccf = np.sum(self._xcorrelations, axis=0) / self._c
+        self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
+        
     
     def calculate_simmetric_part(self):
         size = self._stacked_ccf.size
@@ -200,7 +207,9 @@ class Xcorrelator(object):
         nstack = self._c
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
-        save_path = "%s/%s_%s_%s_%s_%s_%s%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
+        save_path = "{}/{}_{}_{}_{}_{}_{}{}{}".format(
+            path,corrflag,station1,station2,compflag,nstack, self._normalization_method,self._whitening, tested_parameter
+        )
         if not os.path.exists(path):
             os.makedirs(path)
         if (extended_save):

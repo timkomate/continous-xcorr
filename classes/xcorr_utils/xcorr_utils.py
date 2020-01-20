@@ -4,12 +4,11 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 import math
 
-def calc_distance_deg(s_coordinates, e_coordinates):
+def calc_distance_deg(s_coordinates, e_coordinates, FLATTENING = 0.00335281066474):
     slat = s_coordinates[0]
     slon = s_coordinates[1]
     elat = e_coordinates[0]
     elon = e_coordinates[1]
-    FLATTENING = 0.00335281066474
     f = (1. - FLATTENING) * (1. - FLATTENING)
     geoc_elat = math.atan(f * math.tan((math.pi/180) * elat))
     celat = math.cos(geoc_elat)
@@ -27,12 +26,11 @@ def calc_distance_deg(s_coordinates, e_coordinates):
     return delta
     
 
-def calc_distance_km(s_coordinates, e_coordinates):
+def calc_distance_km(s_coordinates, e_coordinates, R = 6371.0):
     slat = math.radians(s_coordinates[0])
     slon = math.radians(s_coordinates[1])
     elat = math.radians(e_coordinates[0])
     elon = math.radians(e_coordinates[1])
-    R = 6371.0
     dlon = slon - elon
     dlat = slat - elat
     a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
@@ -79,7 +77,7 @@ def spectral_whitening( data, sampling_rate, spectrumexp = 0.7,
     )
     spectrum_abs = np.abs(spectrum)
     if (plot):
-        f = np.fft.rfftfreq(len(data), d=1./sampling_rate)
+        f = np.fft.rfftfreq(nextpow2(len(data)), d=1./sampling_rate)
         plt.plot(f,spectrum)
         plt.plot(f,spectrum_abs)
         plt.title("specrtum and ampl. spectrum")
