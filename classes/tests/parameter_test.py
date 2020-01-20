@@ -1,43 +1,46 @@
 from ..xcorrelator.Xcorrelator import Xcorrelator
 from ..dataset.Dataset import Dataset
-from ..xcorr_utils.setup_logger import logger
 from ..xcorr_utils import parameter_init
-import multiprocessing
-from timeit import default_timer as timer
-import pandas as pd
+from ..xcorr_utils.setup_logger import logger
+import numpy as np
+import glob
 import math
+import pandas as pd
+from timeit import default_timer as timer
 
-class Xcorrelator_driver(object):
-    def __init__(self, dataset, filenames):
-        self.add_dataset(dataset)
-        self._filenames = filenames
-    
-    def add_dataset(self, dataset):
-        self._dataset = dataset
-    
-    def __call__(self, filename):
-        self.go(filename)
+start = timer()
 
-    def run(self, core_number = multiprocessing.cpu_count()):
-        if core_number < 1:
-            core_number = multiprocessing.cpu_count()
-        print "Number of cores:", core_number
-        pool = multiprocessing.Pool(core_number)
-        pool.map(self, self._filenames)
-        pool.close()
-        pool.join()
+data = Dataset(
+    path = parameter_init.dataset_path,
+    components = parameter_init.components,
+    years = parameter_init.years
+)
 
-    def go(self, input_name):
-        print input_name
+if(parameter_init.build_dataset):
+    data.read_dataset(
+        file_type = parameter_init.file_type
+    )
+    data.save_json(parameter_init.dataset_name)
+
+
+data.load_json(parameter_init.dataset_name)
+input_path = parameter_init.input_path
+input_list = [f for f in glob.glob("%s/*.text*" % (input_path))]
+print input_list
+
+for envsmooth in np.arange(500,4000,100):
+    parameter_init.envsmooth = envsmooth
+    print parameter_init.envsmooth
+    for file in input_list:
+        print file
         df = pd.read_csv(
-            filepath_or_buffer = input_name, 
+            filepath_or_buffer = file, 
             delimiter= " ",
             header= None,
             comment= "#"
         )
         df.columns = ["network1", "station1", "component1", "network2", "station2", "component2"]
         for index, row in df.iterrows():
-            reading_time = 0
             start = timer()
             network1 = row["network1"]
             station1 = row["station1"]
@@ -45,8 +48,7 @@ class Xcorrelator_driver(object):
             network2 = row["network2"]
             station2 = row["station2"]
             component2 = row["component2"]
-            message = "{}.{}.{}-{}.{}.{}".format(network1,station1,component1,network2,station2,component2)
-            intersect =  self._dataset.intersect(
+            intersect =  data.intersect(
                 component1 = component1,
                 network1 = network1,
                 station1 = station1,
@@ -62,12 +64,9 @@ class Xcorrelator_driver(object):
                 network2 = network2,
                 station2 = station2,
                 paths = intersect,
-                file_type= parameter_init.file_type
             )
-            
             t = math.ceil(float(len(intersect))/parameter_init.max_waveforms)
             for i in range(int(t)):
-                read = timer()
                 xc.read_waveforms(
                     max_waveforms = parameter_init.max_waveforms,
                     maxlag = parameter_init.maxlag,
@@ -80,9 +79,7 @@ class Xcorrelator_driver(object):
                     plot = parameter_init.plot,
                     apply_broadband_filter_tdn= parameter_init.apply_broadband_filter_tdn,
                     broadband_filter_tdn = parameter_init.broadband_filter_tdn
-                ) 
-                reading_time += timer() - read
-
+                )  
                 xc.correct_waveform_lengths()
                 xc.xcorr(
                     maxlag = parameter_init.maxlag,
@@ -94,10 +91,13 @@ class Xcorrelator_driver(object):
                     broadband_filter = parameter_init.broadband_filter_whitening,
                     filter_order = parameter_init.filter_order_whitening
                 )
-
             save_path = xc.save_ccf(
-                path = parameter_init.save_path,
-                extended_save = parameter_init.extended_save
+                path = parameter_init.save_path, 
+                extended_save= True,
+                tested_parameter = "_envsmooth{}".format(envsmooth)
             )
-            logger.info("{}::{}::{}".format(message, timer() - start, reading_time))
-            del xc # is this really necessarily?
+            logger.info("{}.{}.{}-{}.{}.{}::{}".format(
+                network1,station1,component1, 
+                network2,station2,component2, 
+                timer() - start)
+            )

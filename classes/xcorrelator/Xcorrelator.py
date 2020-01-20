@@ -6,6 +6,7 @@ from ..xcorr_utils.setup_logger import logger
 from ..xcorr_utils import parameter_init
 import numpy as np
 from scipy import signal, fftpack, io
+import os
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 import math
@@ -13,9 +14,9 @@ import json
 
 
 class Xcorrelator(object):
-    def __init__(self,component1, network1, station1, component2, network2, station2, paths):
-        self._inst1 = "{}.{}.{}*.mat".format(network1, station1, component1)
-        self._inst2 = "{}.{}.{}*.mat".format(network2, station2, component2)
+    def __init__(self,component1, network1, station1, component2, network2, station2, paths, file_type = "_VEL_"):
+        self._inst1 = "{}.{}.{}{}*.mat".format(network1, station1, component1, file_type)
+        self._inst2 = "{}.{}.{}{}*.mat".format(network2, station2, component2, file_type)
         self._paths = np.sort(paths)
         self._component1 = component1
         self._component2 = component2
@@ -26,6 +27,7 @@ class Xcorrelator(object):
         self._instrument2 = Instrument(sta2)
         self._c = len(self._paths)
         self._offset = 0
+        self._starttime_seg = np.empty((1,self._c),dtype = 'object')
     
     def init_matrix(self, maxlag = 600):
         self._sampling_rate = self._instrument1.get_sampling_rate(
@@ -61,7 +63,7 @@ class Xcorrelator(object):
         while i < rem_waveform:
             file1 = glob.glob("{}/{}".format(self._paths[i + self._offset], self._inst1))[0]
             file2 = glob.glob("{}/{}".format(self._paths[i + self._offset], self._inst2))[0]
-            print file1, file2
+            #print file1, file2
             self._instrument1.push_waveform(
                 path = file1,
                 component = self._component1,
@@ -97,13 +99,11 @@ class Xcorrelator(object):
             espwhitening = 0.05, taper_length_whitening = 100, 
             verbose = False, apply_broadband_filter = False,
             broadband_filter = [200,1], filter_order = 4):
-        #print "Cross-correlation..."
         i = 0
-        #start = timer()
         rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
         while i < rem_waveform:
             j = i + self._offset
-            print i, j
+            #print i, j
             a = self._instrument1.get_waveform(
                 component = self._component1,
                 i = i
@@ -112,6 +112,15 @@ class Xcorrelator(object):
                 component = self._component2,
                 i = i
             ).get_data()
+            
+            starttime = str(self._instrument1.get_starttime(
+                component = self._component1,
+                i = i
+            ))
+            #print starttime, rem_waveform
+
+            self._starttime_seg[0,j] = starttime
+            #print self._starttime_seg
             ccf = signal.correlate(a,b, mode = "full", method="fft")
             tcorr = np.arange(-a.shape[0] + 1, a.shape[0])
             dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
@@ -130,8 +139,6 @@ class Xcorrelator(object):
             )
             self._xcorrelations[j,:] = ccf
             i += 1
-        #end = timer()
-        #print "Cross-correlation:", end - start, "seconds\n"
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0) #/ self._c
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
         self._offset += self._max_waveforms
@@ -152,7 +159,7 @@ class Xcorrelator(object):
         #start = timer()
         rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
         while i < rem_waveform:
-            print i
+            #print i
             a = self._instrument1.get_waveform(self._component1, i)
             b = self._instrument2.get_waveform(self._component2, i)
             dt = a.get_dt()
@@ -194,6 +201,8 @@ class Xcorrelator(object):
         station1 = self._instrument1.get_station_code()
         station2 = self._instrument2.get_station_code()
         save_path = "%s/%s_%s_%s_%s_%s_%s%s" % (path,corrflag,station1,station2,compflag,nstack, self._normalization_method, tested_parameter)
+        if not os.path.exists(path):
+            os.makedirs(path)
         if (extended_save):
             matfile = {
                 "compflag" : compflag,
@@ -205,7 +214,8 @@ class Xcorrelator(object):
                 "lagsx1x2" : self._lagtime,
                 "nstack" : nstack,
                 "Station1" :station1,
-                "Station2" : station2
+                "Station2" : station2,
+                "starttime_seg" : self._starttime_seg
             }
         else:
             matfile = {
@@ -217,10 +227,11 @@ class Xcorrelator(object):
                 "lagsx1x2" : self._lagtime,
                 "nstack" : nstack,
                 "Station1" :station1,
-                "Station2" : station2
+                "Station2" : station2,
+                "starttime_seg" : self._starttime_seg
             }
         io.savemat(save_path, matfile)
-        print "File has been saved as %s" % (save_path)
+        print "File has been saved as {}".format(save_path)
         return save_path
         
     @staticmethod

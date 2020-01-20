@@ -19,7 +19,7 @@ class Instrument(object):
     def push_waveform(self, path, component, envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, 
                 taper_length = 1000, plot = False, normalization = None, apply_broadband_filter = True,
                 broadband_filter = [200,1], filter_order = 4):
-        print "path", path
+        #print "path", path
         waveform = Waveform(path)
         if (len(self._waveforms) == 0):
             lat,lon,elev = waveform.get_coordinates()
@@ -60,6 +60,9 @@ class Instrument(object):
 
     def get_waveform(self, component, i):
         return self._waveforms[component][i]
+
+    def get_starttime(self,component,i):
+        return self._waveforms[component][i].get_starttime()
 
     def print_waveforms(self, component, extended = False):
         if (len(self._waveforms) > 0):
