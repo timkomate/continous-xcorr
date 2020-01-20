@@ -28,8 +28,10 @@ input_path = parameter_init.input_path
 input_list = [f for f in glob.glob("{}/*.text*".format(input_path))]
 print input_list
 
-for envsmooth in np.arange(500,4000,100):
-    parameter_init.envsmooth = envsmooth
+tested_parameter = "envsmooth"
+
+for test in np.arange(500,4000,100):
+    parameter_init.envsmooth = test
     print parameter_init.envsmooth
     for file in input_list:
         print file
@@ -100,8 +102,9 @@ for envsmooth in np.arange(500,4000,100):
             save_path = xc.save_ccf(
                 path = parameter_init.save_path, 
                 extended_save= True,
-                tested_parameter = "_envsmooth{}".format(envsmooth)
+                tested_parameter = "_{}{}".format(tested_parameter,envsmooth)
             )
+
             logger.info("{}.{}.{}-{}.{}.{}::{}".format(
                 network1,station1,component1, 
                 network2,station2,component2, 
