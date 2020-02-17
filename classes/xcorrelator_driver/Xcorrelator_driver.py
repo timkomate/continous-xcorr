@@ -54,6 +54,10 @@ class Xcorrelator_driver(object):
                 network2 = network2,
                 station2 = station2
             )
+
+            if (len(intersect) == 0):
+                continue
+
             xc = Xcorrelator(
                 component1 = component1,
                 network1 = network1,
@@ -104,5 +108,5 @@ class Xcorrelator_driver(object):
                 path = parameter_init.save_path,
                 extended_save = parameter_init.extended_save
             )
-            logger.info("{}::{}::{}".format(message, timer() - start, reading_time))
+            logger.info("{}::{}::{}::{}".format(message, xc.get_nstack(), timer() - start, reading_time))
             del xc # is this really necessarily?

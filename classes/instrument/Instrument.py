@@ -58,6 +58,9 @@ class Instrument(object):
     def get_station_code(self):
         return self._station.get_station_code()
 
+    def get_network_code(self):
+        return self._station.get_network_code()
+
     def get_waveform(self, component, i):
         return self._waveforms[component][i]
 

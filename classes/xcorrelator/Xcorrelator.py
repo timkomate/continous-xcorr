@@ -22,7 +22,6 @@ class Xcorrelator(object):
         self._component2 = component2
         sta1 = Station(network1, station1, None, None, None)
         sta2 = Station(network2, station2, None, None, None)
-        #self._distance = Xcorrelator.calc_distance_km(sta1.get_coordinates(), sta2.get_coordinates())
         self._instrument1 = Instrument(sta1)
         self._instrument2 = Instrument(sta2)
         self._c = len(self._paths)
@@ -148,7 +147,6 @@ class Xcorrelator(object):
     def calculate_linear_stack(self):
         self._stacked_ccf = np.sum(self._xcorrelations, axis=0) / self._c
         self._simmetric_part, self._simmetric_lagtime = self.calculate_simmetric_part()
-        
     
     def calculate_simmetric_part(self):
         size = self._stacked_ccf.size
@@ -205,10 +203,14 @@ class Xcorrelator(object):
         compflag = "ZZ"
         corrflag = "CCF"
         nstack = self._c
+        network1 = self._instrument1.get_network_code()
         station1 = self._instrument1.get_station_code()
+        network2 = self._instrument2.get_network_code()
         station2 = self._instrument2.get_station_code()
-        save_path = "{}/{}_{}_{}_{}_{}_{}{}{}".format(
-            path,corrflag,station1,station2,compflag,nstack, self._normalization_method,self._whitening, tested_parameter
+        save_path = "{}/{}_{}_{}_{}_{}_{}_{}_{}{}{}".format(
+            path, corrflag, network1, station1,
+            network2, station2, compflag, nstack, 
+            self._normalization_method, self._whitening, tested_parameter
         )
         if not os.path.exists(path):
             os.makedirs(path)
@@ -242,6 +244,9 @@ class Xcorrelator(object):
         io.savemat(save_path, matfile)
         print "File has been saved as {}".format(save_path)
         return save_path
+    
+    def get_nstack(self):
+        return self._c
         
     @staticmethod
     def calc_distance_deg(s_coordinates, e_coordinates):
