@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 import math
 import json
+from ..exceptions.IntersectionError import IntersectionError
 
 
 class Xcorrelator(object):
