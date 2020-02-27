@@ -57,7 +57,7 @@ class Xcorrelator_driver(object):
                     station2 = station2
                 )
 
-                if (len(intersect) == 0):
+                if (len(intersect) < parameter_init.min_days):
                     msg = "IntersectionError between {}.{} and {}.{} ({} days)".format(network1,station1, 
                         network2, station2, len(intersect))
                     raise IntersectionError(msg)
@@ -108,12 +108,10 @@ class Xcorrelator_driver(object):
                         filter_order = parameter_init.filter_order_whitening
                     )
             except IntersectionError as e:
-                logger.info("{}::{}::{}::{}".format(message, xc.get_nstack(), timer() - start, -1))
-                del xc
+                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -1))
                 continue
             except ValueError as e:
-                logger.info("{}::{}::{}::{}".format(message, xc.get_nstack(), timer() - start, -2))
-                del xc
+                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -2))
                 continue
             
             xc.calculate_linear_stack()

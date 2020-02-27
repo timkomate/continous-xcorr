@@ -15,6 +15,7 @@ file_type = config.get("DATASET", "file_type")
 #[XCORR-ACORR]
 maxlag = config.getint("XCORR", "maxlag")
 max_waveforms = config.getint("XCORR", "max_waveforms")
+min_days = config.getint("XCORR", "min_days")
 input_path = config.get("XCORR", "input_path")
 number_of_cpus = config.getint("XCORR", "number_of_cpus")
 verbose = config.getboolean("XCORR", "verbose")

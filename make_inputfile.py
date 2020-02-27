@@ -26,7 +26,7 @@ while True:
     for file in files:
         #print "%s/%s" % (pwd, file)
         network, station, component = get_file_infos(file)
-        entry = "%s.%s.%s" % (network, station, component)
+        entry = "{} {} {}".format(network, station, component)
         #print entry
         if entry not in station_list:
             station_list.append(entry)
@@ -34,4 +34,4 @@ while True:
 
 a = list(itertools.combinations(station_list, 2))
 for i in a:
-    output.write("%s %s\n" % (i[0], i[1]))
+    output.write("{} {}\n".format(i[0], i[1]))
