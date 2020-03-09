@@ -116,6 +116,9 @@ class Xcorrelator_driver(object):
             except IOError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -3))
                 continue
+            except KeyError as e:
+                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -4))
+                continue
             
             xc.calculate_linear_stack()
             save_path = xc.save_ccf(
