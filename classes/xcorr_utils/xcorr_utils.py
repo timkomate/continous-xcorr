@@ -3,6 +3,7 @@ from scipy import signal, fftpack, io
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 import math
+import glob
 
 def calc_distance_deg(s_coordinates, e_coordinates, FLATTENING = 0.00335281066474):
     slat = s_coordinates[0]
@@ -190,3 +191,11 @@ def find_station_coordinates(data, network, station):
     lat = data[network][station]["latitude"]
     lon = data[network][station]["longitude"]
     return [lat, lon, elev]
+
+def cf_excist(savepath,network1, station1, network2, station2, corrflag = "*", components = "*", nstack = "*", ccftype = "*"):
+    if(glob.glob("{}/{}_{}_{}_{}_{}_{}_{}_{}.mat".format(savepath,corrflag,network1,station1,network2,station2,components,nstack,ccftype))):
+        return True
+    elif(glob.glob("{}/{}_{}_{}_{}_{}_{}_{}_{}.mat".format(savepath,corrflag,network2,station2,network1,station1,components,nstack,ccftype))):
+        return True
+    else:
+        return False

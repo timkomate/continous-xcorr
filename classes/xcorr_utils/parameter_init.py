@@ -21,6 +21,7 @@ number_of_cpus = config.getint("XCORR", "number_of_cpus")
 verbose = config.getboolean("XCORR", "verbose")
 save_path = config.get("XCORR", "save_path")
 extended_save = config.getboolean("XCORR", "extended_save")
+overwrite = config.getboolean("XCORR", "overwrite")
 
 #[TIMEDOMAIN-NORMALIZATION]
 binary_normalization = config.getboolean("TIMEDOMAIN-NORMALIZATION", "binary_normalization")

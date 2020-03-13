@@ -1,12 +1,13 @@
 from ..xcorrelator.Xcorrelator import Xcorrelator
 from ..dataset.Dataset import Dataset
 from ..xcorr_utils.setup_logger import logger
-from ..xcorr_utils import parameter_init
+from ..xcorr_utils import parameter_init, xcorr_utils
 import multiprocessing
 from timeit import default_timer as timer
 import pandas as pd
 import math
 from ..exceptions.IntersectionError import IntersectionError
+from ..exceptions.FileExcist import FileExcistError
 
 class Xcorrelator_driver(object):
     def __init__(self, dataset, filenames):
@@ -56,6 +57,20 @@ class Xcorrelator_driver(object):
                     network2 = network2,
                     station2 = station2
                 )
+                print parameter_init.overwrite
+                if (not parameter_init.overwrite):
+                    excist = xcorr_utils.cf_excist(
+                        savepath = parameter_init.save_path,
+                        network1 = network1,
+                        station1 = station1,
+                        network2 = network2,
+                        station2 = station2,
+                        corrflag="CCF"
+                    )
+                    print excist
+                    if excist:
+                        fee_msg = "CCF between {}.{} and {}.{} already excist".format(network1,station1,network2,station2)
+                        raise FileExcistError(fee_msg)
 
                 if (len(intersect) < parameter_init.min_days):
                     msg = "IntersectionError between {}.{} and {}.{} ({} days)".format(network1,station1, 
@@ -118,6 +133,9 @@ class Xcorrelator_driver(object):
                 continue
             except KeyError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -4))
+                continue
+            except FileExcistError as e:
+                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -5))
                 continue
             
             xc.calculate_linear_stack()
