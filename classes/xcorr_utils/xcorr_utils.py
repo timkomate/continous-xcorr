@@ -299,10 +299,8 @@ def apcc2(x1, dt, lag0, lagu):
 
     # Analytic signal and normalization
     start = timer()
-    ya1 = scipy.fftpack.hilbert(x1)
     hh = lambda x: signal.hilbert(x1, fftpack.next_fast_len(len(x1)))[:len(x1)]
     xa1 = hh(x1)
-    print ya1 - xa1
     xa1 = xa1 / np.abs(xa1)
     print timer() - start
     # Padding zeros

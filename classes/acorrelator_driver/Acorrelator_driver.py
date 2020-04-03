@@ -39,8 +39,8 @@ class Acorrelator_driver(object):
         )
         df.columns = ["network", "station", "component"]
         for index, row in df.iterrows():
-            #try:
-            if True:
+            try:
+            #if True:
                 reading_time = 0
                 start = timer()
                 network = row["network"]
@@ -109,7 +109,7 @@ class Acorrelator_driver(object):
                         broadband_filter = parameter_init.broadband_filter_whitening,
                         filter_order = parameter_init.filter_order_whitening
                     )
-            """except IntersectionError as e:
+            except IntersectionError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -1))
                 continue
             except ValueError as e:
@@ -123,7 +123,7 @@ class Acorrelator_driver(object):
                 continue
             except FileExcistError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -5))
-                continue"""
+                continue
             
             ac.calculate_linear_stack()
             save_path = ac.save_acf(
