@@ -1,4 +1,4 @@
-from ..xcorrelator.Xcorrelator import Xcorrelator
+from ..acorrelator.Acorrelator import Acorrelator
 from ..dataset.Dataset import Dataset
 from ..xcorr_utils.setup_logger import logger
 from ..xcorr_utils import parameter_init, xcorr_utils
@@ -9,7 +9,7 @@ import math
 from ..exceptions.IntersectionError import IntersectionError
 from ..exceptions.FileExcist import FileExcistError
 
-class Xcorrelator_driver(object):
+class Acorrelator_driver(object):
     def __init__(self, dataset, filenames):
         self.add_dataset(dataset)
         self._filenames = filenames
@@ -37,51 +37,43 @@ class Xcorrelator_driver(object):
             header= None,
             comment= "#"
         )
-        df.columns = ["network1", "station1", "component1", "network2", "station2", "component2"]
+        df.columns = ["network", "station", "component"]
         for index, row in df.iterrows():
-            try:
+            #try:
+            if True:
                 reading_time = 0
                 start = timer()
-                network1 = row["network1"]
-                station1 = row["station1"]
-                component1 = row["component1"]
-                network2 = row["network2"]
-                station2 = row["station2"]
-                component2 = row["component2"]
-                message = "{}.{}.{}-{}.{}.{}".format(network1,station1,component1,network2,station2,component2)
-                intersect =  self._dataset.intersect(
-                    component1 = component1,
-                    network1 = network1,
-                    station1 = station1,
-                    component2 = component2,
-                    network2 = network2,
-                    station2 = station2
+                network = row["network"]
+                station = row["station"]
+                component = row["component"]
+                message = "{}.{}.{}".format(network,station,component)
+                intersect =  self._dataset.get_folders(
+                    component = component,
+                    network = network,
+                    station = station
                 )
-                if (not parameter_init.overwrite):
+                """if (not parameter_init.overwrite):
                     excist = xcorr_utils.cf_excist(
                         savepath = parameter_init.save_path,
                         network1 = network1,
                         station1 = station1,
                         network2 = network2,
                         station2 = station2,
-                        corrflag="CCF"
+                        corrflag="ACF"
                     )
                     if excist:
                         fee_msg = "CCF between {}.{} and {}.{} already excist".format(network1,station1,network2,station2)
-                        raise FileExcistError(fee_msg)
+                        raise FileExcistError(fee_msg)"""
 
-                if (len(intersect) < parameter_init.min_days):
+                """if (len(intersect) < parameter_init.min_days):
                     msg = "IntersectionError between {}.{} and {}.{} ({} days)".format(network1,station1, 
                         network2, station2, len(intersect))
-                    raise IntersectionError(msg)
+                    raise IntersectionError(msg)"""
 
-                xc = Xcorrelator(
-                    component1 = component1,
-                    network1 = network1,
-                    station1 = station1,
-                    component2 = component2,
-                    network2 = network2,
-                    station2 = station2,
+                ac = Acorrelator(
+                    component = component,
+                    network = network,
+                    station = station,
                     paths = intersect,
                     file_type= parameter_init.file_type
                 )
@@ -93,7 +85,7 @@ class Xcorrelator_driver(object):
 
                 for i in range(int(t)):
                     read = timer()
-                    xc.read_waveforms(
+                    ac.read_waveforms(
                         max_waveforms = parameter_init.max_waveforms,
                         maxlag = parameter_init.maxlag,
                         filters = parameter_init.filters,
@@ -107,9 +99,7 @@ class Xcorrelator_driver(object):
                         broadband_filter_tdn = parameter_init.broadband_filter_tdn
                     ) 
                     reading_time += timer() - read
-
-                    xc.correct_waveform_lengths()
-                    xc.xcorr(
+                    ac.acorr_pcc(
                         maxlag = parameter_init.maxlag,
                         spectrumexp = parameter_init.spectrumexp,
                         espwhitening = parameter_init.espwhitening,
@@ -117,10 +107,9 @@ class Xcorrelator_driver(object):
                         verbose = parameter_init.plot,
                         apply_broadband_filter = parameter_init.apply_broadband_filter_whitening,
                         broadband_filter = parameter_init.broadband_filter_whitening,
-                        apply_spectral_whitening = parameter_init.apply_spectral_whitening,
                         filter_order = parameter_init.filter_order_whitening
                     )
-            except IntersectionError as e:
+            """except IntersectionError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -1))
                 continue
             except ValueError as e:
@@ -134,12 +123,12 @@ class Xcorrelator_driver(object):
                 continue
             except FileExcistError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -5))
-                continue
+                continue"""
             
-            xc.calculate_linear_stack()
-            save_path = xc.save_ccf(
+            ac.calculate_linear_stack()
+            save_path = ac.save_acf(
                 path = parameter_init.save_path,
                 extended_save = parameter_init.extended_save
             )
-            logger.info("{}::{}::{}::{}".format(message, xc.get_nstack(), timer() - start, reading_time))
-            del xc # is this really necessarily?
+            logger.info("{}::{}::{}::{}".format(message, ac.get_nstack(), timer() - start, reading_time))
+            del ac # is this really necessarily?

@@ -37,6 +37,17 @@ def calc_distance_km(s_coordinates, e_coordinates, R = 6371.0):
     a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
+def angular_distance(s_coordinates, e_coordinates, R = 6371.0):
+    slat = math.radians(s_coordinates[0])
+    slon = math.radians(s_coordinates[1])
+    elat = math.radians(e_coordinates[0])
+    elon = math.radians(e_coordinates[1])
+    dlon = slon - elon
+    dlat = slat - elat
+    a = math.sin(dlat / 2)**2 + math.cos(elat) * math.cos(slat) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return c
     
 def load_station_infos(json_path):
     with open(json_path, 'r') as fp:
@@ -199,3 +210,114 @@ def cf_excist(savepath,network1, station1, network2, station2, corrflag = "*", c
         return True
     else:
         return False
+
+import scipy.signal
+import numpy as np
+
+#===========================================================
+# Routine by Luis-Fabian Bonilla (IPGP & IFSTTAR), Jan 2020.
+#===========================================================
+
+# Tapering with a Hanning window
+
+def taper(x,p):
+    if p <= 0.0:
+        return x
+    else:
+        f0 = 0.5
+        f1 = 0.5
+        n  = len(x)
+        nw = int(p*n)
+
+        if nw > 0:
+            ow = np.pi/nw
+
+            w = np.ones( n )
+            for i in range( nw ):
+                w[i] = f0 - f1 * np.cos(ow*i)
+
+            for i in range( n-nw,n ):
+                w[i] = 1.0 - w[i-n+nw]
+
+            return x * w
+        elif nw == 0:
+            return x
+
+# Bitwise version
+
+def next_power_of_2(n):
+    """
+    Return next power of 2 greater than or equal to n
+    """
+    return 2**(n-1).bit_length()
+
+# PCC2 from Ventosa el al. (2019)
+
+def pcc2(x1, x2, dt, lag0, lagu):
+    # Preprocessing
+
+    x1 = x1 - np.mean(x1)
+    x2 = x2 - np.mean(x2)
+    x1 = taper(x1, 0.05)
+    x2 = taper(x2, 0.05)
+    N  = len(x1)
+    Nz = next_power_of_2( 2*N )
+
+    # Analytic signal and normalization
+
+    xa1 = scipy.signal.hilbert(x1)
+    xa2 = scipy.signal.hilbert(x2)
+    xa1 = xa1 / np.abs(xa1)
+    xa2 = xa2 / np.abs(xa2)
+
+    # Padding zeros
+
+    xa1 = np.append(xa1, np.zeros((Nz-N), dtype=np.complex_))
+    xa2 = np.append(xa2, np.zeros((Nz-N), dtype=np.complex_))
+
+    # FFT, correlation and IFFT
+
+    xa1 = np.fft.fft(xa1)
+    xa2 = np.fft.fft(xa2)
+    amp = xa1 * np.conj(xa2)
+    pcc = np.real( np.fft.ifft(amp) ) / N
+    pcc = np.fft.ifftshift(pcc)
+    tt  = Nz//2 * dt
+    t   = np.arange(-tt, tt, dt)
+
+    return t[(t >= lag0) & (t <= lagu)], pcc[(t >= lag0) & (t <= lagu)]
+
+# PCC2 for autocorrelation
+
+def apcc2(x1, dt, lag0, lagu):
+    # Preprocessing
+    
+    x1 = x1 - np.mean(x1)
+    x1 = taper(x1, 0.05)
+    N  = len(x1)
+    Nz = next_power_of_2( 2*N )
+
+    # Analytic signal and normalization
+    start = timer()
+    ya1 = scipy.fftpack.hilbert(x1)
+    hh = lambda x: signal.hilbert(x1, fftpack.next_fast_len(len(x1)))[:len(x1)]
+    xa1 = hh(x1)
+    print ya1 - xa1
+    xa1 = xa1 / np.abs(xa1)
+    print timer() - start
+    # Padding zeros
+
+    xa1 = np.append(xa1, np.zeros((Nz-N), dtype=np.complex_))
+
+    # FFT, correlation and IFFT
+    
+    xa1 = np.fft.fft(xa1)
+    amp = xa1 * np.conj(xa1)
+    pcc = np.real( np.fft.ifft(amp) ) / N
+    pcc = np.fft.ifftshift(pcc)
+    tt  = Nz//2 * dt
+    t   = np.arange(-tt, tt, dt)
+    
+    t = np.around(t, decimals= 4)
+    
+    return t[(t >= lag0) & (t <= lagu)], pcc[(t >= lag0) & (t <= lagu)]
