@@ -1,6 +1,9 @@
 import glob
 from ..xcorr_utils.xcorr_utils import downweight_ends, spectral_whitening
+import multiprocessing
+from multiprocessing import RawArray
 from ..instrument.Instrument import Instrument
+from ..xcorr_utils.parallel_xcorr import init_worker, worker_func
 from ..station.Station import Station
 from ..xcorr_utils.setup_logger import logger
 from ..xcorr_utils import parameter_init
@@ -38,7 +41,7 @@ class Xcorrelator(object):
         self._distance = Xcorrelator.calc_distance_km(
             s_coordinates = self._instrument1.get_station_coordinates(), 
             e_coordinates = self._instrument2.get_station_coordinates()
-        )
+            )
 
     def read_waveforms(self, maxlag = 600, max_waveforms = 100, filters = [], filter_order = 4,
                     envsmooth = 1500, env_exp = 1.5, min_weight = 0.1, taper_length = 1000, 
@@ -98,6 +101,50 @@ class Xcorrelator(object):
         if (self._offset == 0):
             self.init_matrix(maxlag)
         #raw_input()
+    
+    def get_data_mtx(self): 
+        d_len = int(max([self._instrument1.get_max_length(), self._instrument2.get_max_length()]))
+        a = self._instrument1.get_waveforms_mtx(self._component1, d_len * self._sampling_rate)
+        b = self._instrument2.get_waveforms_mtx(self._component2, d_len * self._sampling_rate)
+        return [a,b] 
+
+    def xcorr_parallel(self, maxlag = 600, spectrumexp = 0.7,
+        espwhitening = 0.05, taper_length_whitening = 100, 
+        verbose = False, apply_broadband_filter = False,
+        apply_spectral_whitening = True, broadband_filter = [200,1], 
+        filter_order = 4, number_of_workers = 4):
+
+        rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
+        shape = (rem_waveform, int((maxlag*self._sampling_rate*2) + 1))
+        
+        global var_dict
+        var_dict = {}
+        self._instrument1.pad_waveforms(self._component1)
+        self._instrument2.pad_waveforms(self._component2)
+        a, b = self.get_data_mtx()
+        X_shape = a.shape
+
+        X = RawArray('d', X_shape[0] * X_shape[1])
+        Y = RawArray('d', X_shape[0] * X_shape[1])
+
+        X_np = np.frombuffer(X).reshape(X_shape)
+        Y_np = np.frombuffer(Y).reshape(X_shape)
+        np.copyto(X_np, a)
+        np.copyto(Y_np, b)
+
+        tcorr = np.arange(-a.shape[1] + 1, a.shape[1])
+        dN = np.where(np.abs(tcorr) <= maxlag*self._sampling_rate)[0]
+        self._lagtime = tcorr[dN] * (1. / self._sampling_rate)
+
+        pool = multiprocessing.Pool(processes=number_of_workers, initializer=init_worker, initargs=(X,Y, X_shape))
+        result = pool.map(worker_func, range(X_shape[0]))
+        pool.close()
+        pool.join()
+
+        self._xcorrelations[self._offset:self._offset + rem_waveform,:] = result
+        #printprint self._instrument1.get_starttimes(self._component1)
+        self._starttime_seg[0,self._offset:self._offset + rem_waveform] = self._instrument1.get_starttimes(self._component1)
+        self._offset += self._max_waveforms 
 
     def xcorr(self, maxlag = 600, spectrumexp = 0.7, 
             espwhitening = 0.05, taper_length_whitening = 100, 
@@ -176,7 +223,7 @@ class Xcorrelator(object):
             diff_start = int(math.floor(abs(s1-s2) / dt))
             diff_end = int(math.ceil(abs(e1-e2) / dt))
             #s1 started earlier
-            if s1 < s2: 
+            if s1-s2 < 0: 
                 a.set_starttime(s1 + (diff_start*dt))
                 data = a.get_data()
                 data = data[diff_start:]
@@ -186,7 +233,7 @@ class Xcorrelator(object):
                 data = b.get_data()
                 data = data[diff_start:]
                 b.set_data(data)
-            if e1 > e2: 
+            if e1-e2 > 0: 
                 a.set_endtime(e1 - (diff_end*dt))
                 data = a.get_data()
                 data = data[:-diff_end]
@@ -240,7 +287,6 @@ class Xcorrelator(object):
                 "nstack" : nstack,
                 "Station1" :station1,
                 "Station2" : station2,
-                "starttime_seg" : self._starttime_seg
             }
         io.savemat(save_path, matfile)
         print "File has been saved as {}".format(save_path)

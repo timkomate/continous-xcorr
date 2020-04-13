@@ -122,14 +122,11 @@ class Acorrelator_driver(object):
             except KeyError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -4))
                 continue
-            except scipy.io.matlab.miobase.MatReadError as e:
-                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -4))
-                continue
             except FileExcistError as e:
                 logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -5))
                 continue
             except scipy.io.matlab.miobase.MatReadError as e:
-                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -4))
+                logger.info("{}::{}::{}::{}".format(message, 0, timer() - start, -6))
                 continue
             
             ac.calculate_linear_stack()

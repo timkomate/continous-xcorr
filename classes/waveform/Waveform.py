@@ -54,8 +54,8 @@ class Waveform(object):
         self._endtime = endtime
     
     def get_npts(self):
-        #return self._data.shape[0]
-        return self._npts
+        return self._data.shape[0]
+        #return self._npts
 
     def set_npts(self, npts):
         self._npts = npts
