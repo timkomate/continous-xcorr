@@ -9,11 +9,13 @@ def get_file_infos(filename):
     component = splitted_filename[2].split('_')[0]
     return [network, station, component]
 
-path = "/home/mate/PhD/codes/continous_waveform_downloader/test/"
-component = "Z"
+path = "/mnt/storage_A/mate/ambient_noise_data/"
+component = "Z/"
+year = "2017"
 
-data_directory = path + component
-output_name = "./combinations.text"
+
+data_directory = path + component + year
+output_name = "./combinations{}.text".format(year)
 output = open(output_name, "w")
 
 ll = os.walk(data_directory)

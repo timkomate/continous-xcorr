@@ -6,3 +6,4 @@ figures
 *json
 *.text*
 logs
+filter_combinations.py
