@@ -212,7 +212,6 @@ class Xcorrelator(object):
         #start = timer()
         rem_waveform = self._max_waveforms if self._c - self._offset > self._max_waveforms else self._c - self._offset
         while i < rem_waveform:
-            #print i
             a = self._instrument1.get_waveform(self._component1, i)
             b = self._instrument2.get_waveform(self._component2, i)
             dt = a.get_dt()
